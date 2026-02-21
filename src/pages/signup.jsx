@@ -8,7 +8,7 @@ const Signup = () => {
     const initialEmail = query.get('email') || '';
     const initialRole = query.get('role') || 'Member';
 
-    // State initialization: URL params aseltar te pahile ghetle jatil
+    // State initialization
     const [formData, setFormData] = useState({
         username: '', 
         email: initialEmail, 
@@ -18,7 +18,7 @@ const Signup = () => {
 
     const navigate = useNavigate();
 
-    // Jar URL badalli tar form data parat update karnyathi useEffect
+    // URL badalli tar form data update honyasathi
     useEffect(() => {
         if (initialEmail || initialRole) {
             setFormData(prev => ({
@@ -32,15 +32,17 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await API.post('/auth/register', formData);
+            // ✅ CORRECTED ENDPOINT: '/auth/register' badlun '/auth/signup' kele aahe
+            await API.post('/auth/signup', formData); 
             alert("Registration Successful!");
             navigate('/'); 
         } catch (err) {
+            // Backend kade request pohchlyavar jar error aala tar
             alert(err.response?.data?.error || err.response?.data?.msg || "Signup failed");
         }
     };
 
-    // --- Styles (Same as yours) ---
+    // --- Styles ---
     const pageStyle = {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         width: '100vw', height: '100vh', margin: 0, padding: 0,
