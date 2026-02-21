@@ -1,11 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import MentorDashboard from './pages/MentorDashboard';
-import MemberDashboard from './pages/MemberDashboard'; 
-import LeaderDashboard from './pages/LeaderDashboard'; 
-import LeaderTask from './pages/LeaderTask'; 
-import MemberDetailView from './pages/MemberDetailView'; // Navin file import kara
+// Imports small letters madhe kele aahet (Match with your filenames)
+import Login from './pages/login'; 
+import Signup from './pages/signup'; 
+import MentorDashboard from './pages/mentordashboard';
+import MemberDashboard from './pages/memberdashboard'; 
+import LeaderDashboard from './pages/leaderdashboard'; 
+import LeaderTask from './pages/leadertask'; 
+import MemberDetailView from './pages/memberdetailview';
 
 function App() {
   return (
@@ -21,10 +22,10 @@ function App() {
         <Route path="/leader-dashboard" element={<LeaderDashboard />} />
         <Route path="/leader-tasks" element={<LeaderTask />} />
         
-        {/* Dynamic Route: Particular Member chi details baghnyasathi */}
+        {/* Dynamic Route */}
         <Route path="/member-details/:email" element={<MemberDetailView />} />
 
-        {/* Member Route: Mobile view */}
+        {/* Member Route */}
         <Route path="/member-dashboard" element={<MemberDashboard />} />
 
         {/* Fallback */}
