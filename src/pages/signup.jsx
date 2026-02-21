@@ -8,7 +8,7 @@ const Signup = () => {
     const initialEmail = query.get('email') || '';
     const initialRole = query.get('role') || 'Member';
 
-    // State initialization
+    // State initialization: URL params aseltar te pahile ghetle jatil
     const [formData, setFormData] = useState({
         username: '', 
         email: initialEmail, 
@@ -18,7 +18,7 @@ const Signup = () => {
 
     const navigate = useNavigate();
 
-    // URL badalli tar form data update honyasathi
+    // Jar URL badalli tar form data parat update karnyathi useEffect
     useEffect(() => {
         if (initialEmail || initialRole) {
             setFormData(prev => ({
@@ -32,17 +32,19 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // ✅ CORRECTED ENDPOINT: '/auth/register' badlun '/auth/signup' kele aahe
+            /** * ✅ CORRECTED ENDPOINT: '/auth/signup'
+             * Note: Axios baseURL madhe '/api' asne garjeche aahe 
+             */
             await API.post('/auth/signup', formData); 
             alert("Registration Successful!");
             navigate('/'); 
         } catch (err) {
-            // Backend kade request pohchlyavar jar error aala tar
+            // Error handling: backend kadun yenara msg dakhva
             alert(err.response?.data?.error || err.response?.data?.msg || "Signup failed");
         }
     };
 
-    // --- Styles ---
+    // --- Inline Styles ---
     const pageStyle = {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         width: '100vw', height: '100vh', margin: 0, padding: 0,

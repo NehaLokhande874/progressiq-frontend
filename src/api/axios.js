@@ -3,14 +3,13 @@ import axios from 'axios';
 /**
  * 🚀 PROPER AXIOS CONFIGURATION FOR PRODUCTION
  * Backend: Render (Live)
- * Frontend: ProgressIQ
  */
 
 const API = axios.create({
-    // Important: Render chi link quotes madhe asavi lagte
-    baseURL: "https://progressiq-backend.onrender.com", 
+    // ✅ IMPORTANT: Shevti '/api' add kela aahe backend routes match karnya sathi
+    baseURL: "https://progressiq-backend.onrender.com/api", 
     
-    // Timeout vadhvla aahe karan Render free tier la uthayla vel lagto
+    // Timeout 30s aahe, je Render free tier sathi barobar aahe
     timeout: 30000, 
     
     headers: {
@@ -22,11 +21,10 @@ const API = axios.create({
 API.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
-        // 'Bearer ' space sobt nehami vapra
         config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Debugging sathi (Development madhe useful aahe)
+    // Debugging: Console madhe ata barobar full path disel
     console.log(`📡 Sending Request to: ${config.baseURL}${config.url}`);
     
     return config;
@@ -34,15 +32,13 @@ API.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
-// 🛠️ RESPONSE INTERCEPTOR: Error handling sathi
+// 🛠️ RESPONSE INTERCEPTOR: Error handling
 API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (!error.response) {
-            // Render "Spin down" asel tar ha error yeu shakto
-            console.error("❌ Network Error: Server 'sleep' mode madhe asu shakto. 50 sec thamba.");
+            console.error("❌ Network Error: Server 'sleep' mode madhe asu shakto.");
         } else if (error.response.status === 401) {
-            // Jar token expired jhala tar
             console.warn("⚠️ Unauthorized! Please login again.");
             localStorage.removeItem('token');
         }
