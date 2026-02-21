@@ -1,12 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-// Imports small letters madhe kele aahet (Match with your filenames)
-import Login from './pages/login'; 
+
+// Match kelele exact filenames (Sidebar pramane)
+import Login from './pages/Login'; 
 import Signup from './pages/signup'; 
-import MentorDashboard from './pages/mentordashboard';
-import MemberDashboard from './pages/memberdashboard'; 
-import LeaderDashboard from './pages/leaderdashboard'; 
-import LeaderTask from './pages/leadertask'; 
-import MemberDetailView from './pages/memberdetailview';
+import MentorDashboard from './pages/MentorDashboard';
+import MemberDashboard from './pages/MemberDashboard'; 
+import LeaderDashboard from './pages/LeaderDashboard'; 
+import LeaderTask from './pages/LeaderTask'; 
+import MemberDetailView from './pages/MemberDetailView';
 
 function App() {
   return (
