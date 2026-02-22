@@ -19,14 +19,17 @@ const Login = () => {
             // --- 1. Storage Logic ---
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('role', res.data.role); 
-            localStorage.setItem('username', formData.email);
+            localStorage.setItem('username', res.data.username); // backend kadun yenara username vapra
+            localStorage.setItem('email', res.data.email);
 
             alert(`✅ Login Successful! Welcome to ProjectProgressIQ`);
             
-            // --- 2. Role-Based Redirection ---
+            // --- 2. Role-Based Redirection (Updated for Admin) ---
             const userRole = res.data.role;
 
-            if (userRole === 'Mentor') {
+            if (userRole === 'Admin') {
+                navigate('/admin-dashboard');
+            } else if (userRole === 'Mentor') {
                 navigate('/mentor-dashboard');
             } else if (userRole === 'Leader') {
                 navigate('/leader-dashboard');
@@ -37,14 +40,13 @@ const Login = () => {
             }
 
         } catch (err) {
-            // Backend kadun yenara error message dakhva
             alert(err.response?.data?.msg || "Login failed. Please check your credentials.");
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Styles (Clean & Professional) ---
+    // --- Styles ---
     const pageStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100vw', height: '100vh', backgroundColor: '#f5f5f5', position: 'fixed', top: 0, left: 0 };
     const cardStyle = { width: '380px', padding: '35px', backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0px 10px 25px rgba(0,0,0,0.1)', fontFamily: 'Arial, sans-serif' };
     const labelStyle = { fontWeight: 'bold', fontSize: '14px', color: '#333' };
