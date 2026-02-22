@@ -9,7 +9,6 @@ const MemberDashboard = () => {
     const [files, setFiles] = useState({}); 
     const [notes, setNotes] = useState({}); 
     
-    // ✅ IMPORTANT: Login madhe apan email 'username' key madhe save kela aahe
     const userEmail = localStorage.getItem('username'); 
     const displayName = userEmail ? userEmail.split('@')[0] : "Member";
 
@@ -19,16 +18,12 @@ const MemberDashboard = () => {
             return;
         }
         try {
-            // 1. Member che tasks fetch kara
             const res = await API.get(`/tasks/member/${userEmail}`);
             setTasks(res.data);
 
-            // 2. Jar tasks asel, tar Team Mates fetch kara
             if (res.data.length > 0) {
                 const leaderEmail = res.data[0].leaderEmail;
                 const teamRes = await API.get(`/tasks/leader/${leaderEmail}`);
-                
-                // Duplicate emails kadhun taka ani swatahla filter kara
                 const uniqueMates = [...new Set(teamRes.data.map(t => t.assignedTo))]
                                     .filter(email => email !== userEmail);
                 setTeamMates(uniqueMates);
@@ -56,9 +51,7 @@ const MemberDashboard = () => {
             await API.put(`/tasks/submit-work/${taskId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
             alert("✅ Work submitted successfully!");
-            // Data refresh kara mhanje status 'Completed' disel
             fetchDashboardData(); 
         } catch (err) {
             alert("❌ Submission failed: " + (err.response?.data?.message || "Server Error"));
@@ -67,27 +60,27 @@ const MemberDashboard = () => {
         }
     };
 
-    const statusBadge = (status) => {
-        const isCompleted = status === 'Completed' || status === 'Submitted';
+    // --- Status Badge Helper ---
+    const getBadgeStyle = (status) => {
+        let colors = { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+        if (status === 'Completed') colors = { bg: '#dcfce7', text: '#166534', border: '#bbf7d0' };
+        if (status === 'Submitted') colors = { bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' };
+        if (status === 'Active') colors = { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa' };
+
         return {
-            fontSize: '10px',
-            fontWeight: 'bold',
-            padding: '4px 10px',
-            borderRadius: '20px',
-            backgroundColor: isCompleted ? '#dcfce7' : '#fff7ed',
-            color: isCompleted ? '#166534' : '#9a3412',
-            border: isCompleted ? '1px solid #bbf7d0' : '1px solid #fed7aa'
+            fontSize: '11px', fontWeight: 'bold', padding: '4px 12px', borderRadius: '20px',
+            backgroundColor: colors.bg, color: colors.text, border: `1px solid ${colors.border}`
         };
     };
 
     return (
         <div style={pageStyle}>
-            {/* --- LEFT SIDE: PROJECT & TEAM INFO --- */}
+            {/* --- LEFT SIDE: PROJECT & TEAM --- */}
             <div style={sidebarStyle}>
                 <div style={infoCard}>
                     <h3 style={{margin: '0 0 10px 0', fontSize: '18px', color: '#1e293b'}}>🚀 Project Info</h3>
-                    <p style={infoText}><b>Leader Email:</b> <br/>{tasks.length > 0 ? tasks[0].leaderEmail : "Not Assigned"}</p>
-                    <p style={infoText}><b>Project Status:</b> {tasks.length > 0 ? "In Progress" : "Waiting for Tasks"}</p>
+                    <p style={infoText}><b>Leader:</b> <br/>{tasks.length > 0 ? tasks[0].leaderEmail : "Not Assigned"}</p>
+                    <p style={infoText}><b>Tasks:</b> {tasks.length}</p>
                 </div>
 
                 <div style={infoCard}>
@@ -95,63 +88,88 @@ const MemberDashboard = () => {
                     {teamMates.length > 0 ? teamMates.map((mate, idx) => (
                         <div key={idx} style={mateItem}>
                             <div style={avatarStyle}>{mate[0].toUpperCase()}</div>
-                            <span style={{fontSize: '13px', color: '#475569'}}>{mate}</span>
+                            <span style={{fontSize: '13px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis'}}>{mate}</span>
                         </div>
-                    )) : <p style={{fontSize: '12px', color: '#94a3b8'}}>Working Solo or Loading...</p>}
+                    )) : <p style={{fontSize: '12px', color: '#94a3b8'}}>Solo Mission ⚡</p>}
                 </div>
             </div>
 
-            {/* --- RIGHT SIDE: TASKS --- */}
+            {/* --- RIGHT SIDE: MAIN CONTENT --- */}
             <div style={mainContent}>
                 <div style={headerSection}>
-                    <h2 style={{margin: 0, color: '#0f172a'}}>Welcome, {displayName}! 👋</h2>
-                    <p style={{fontSize: '13px', color: '#64748b'}}>Dashboard for {userEmail}</p>
+                    <h2 style={{margin: 0, color: '#0f172a'}}>Hello, {displayName}! 👋</h2>
+                    <p style={{fontSize: '14px', color: '#64748b'}}>Track your progress and submit work below.</p>
                 </div>
 
                 {loading ? (
-                    <div style={noDataBox}>Loading your tasks...</div>
+                    <div style={noDataBox}>🔄 Loading Tasks...</div>
                 ) : (
                     <div style={taskList}>
-                        {tasks.length > 0 ? tasks.map(task => (
-                            <div key={task._id} style={taskItem}>
-                                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px'}}>
-                                    <h4 style={taskTitle}>{task.title || "New Task"}</h4>
-                                    <span style={statusBadge(task.status)}>{task.status}</span>
-                                </div>
-                                <p style={deadlineStyle}>📅 Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
-                                <p style={{fontSize: '13px', color: '#475569', marginBottom: '15px'}}>{task.description}</p>
+                        {tasks.length > 0 ? tasks.map(task => {
+                            // Logic for visual notification border
+                            const isRejected = task.status === 'Active' && task.feedback;
+                            const isCompleted = task.status === 'Completed';
 
-                                {task.status !== 'Completed' && task.status !== 'Submitted' ? (
-                                    <div style={submissionArea}>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Add a comment for leader..." 
-                                            style={noteInput}
-                                            onChange={(e) => setNotes({...notes, [task._id]: e.target.value})}
-                                        />
-                                        <div style={fileRow}>
-                                            <input 
-                                                type="file" 
-                                                style={{fontSize: '11px'}} 
-                                                onChange={(e) => setFiles({...files, [task._id]: e.target.files[0]})}
-                                            />
-                                            <button 
-                                                onClick={() => handleSubmitWork(task._id)}
-                                                disabled={uploadingId === task._id}
-                                                style={{...submitBtn, backgroundColor: uploadingId === task._id ? '#94a3b8' : '#2563eb'}}
-                                            >
-                                                {uploadingId === task._id ? 'Sending...' : 'Submit Work'}
-                                            </button>
-                                        </div>
+                            return (
+                                <div key={task._id} style={{
+                                    ...taskItem,
+                                    borderTop: isCompleted ? '6px solid #10b981' : isRejected ? '6px solid #ef4444' : '1px solid #e2e8f0'
+                                }}>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
+                                        <h4 style={taskTitle}>{task.title}</h4>
+                                        <span style={getBadgeStyle(task.status)}>{task.status}</span>
                                     </div>
-                                ) : (
-                                    <div style={successBox}>✅ Work Submitted Successfully</div>
-                                )}
-                            </div>
-                        )) : (
+                                    
+                                    <p style={deadlineStyle}>📅 Deadline: {new Date(task.deadline).toLocaleDateString()}</p>
+                                    <p style={{fontSize: '13px', color: '#475569', lineHeight: '1.5'}}>{task.description}</p>
+
+                                    {/* ✅ Leader's Notification / Feedback Section */}
+                                    {task.feedback && (
+                                        <div style={{
+                                            marginTop: '15px', padding: '12px', borderRadius: '8px', fontSize: '13px',
+                                            backgroundColor: isCompleted ? '#f0fdf4' : '#fef2f2',
+                                            borderLeft: isCompleted ? '4px solid #166534' : '4px solid #991b1b',
+                                            color: isCompleted ? '#166534' : '#991b1b'
+                                        }}>
+                                            <b>💬 Leader's Note:</b> {task.feedback}
+                                        </div>
+                                    )}
+
+                                    {/* Submission Logic */}
+                                    {task.status === 'Active' ? (
+                                        <div style={submissionArea}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Write a message for your leader..." 
+                                                style={noteInput}
+                                                onChange={(e) => setNotes({...notes, [task._id]: e.target.value})}
+                                            />
+                                            <div style={fileRow}>
+                                                <input 
+                                                    type="file" 
+                                                    style={{fontSize: '11px', width: '60%'}} 
+                                                    onChange={(e) => setFiles({...files, [task._id]: e.target.files[0]})}
+                                                />
+                                                <button 
+                                                    onClick={() => handleSubmitWork(task._id)}
+                                                    disabled={uploadingId === task._id}
+                                                    style={{...submitBtn, backgroundColor: uploadingId === task._id ? '#94a3b8' : '#2563eb'}}
+                                                >
+                                                    {uploadingId === task._id ? 'Uploading...' : 'Submit Work'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{...successBox, backgroundColor: isCompleted ? '#dcfce7' : '#f0f9ff', color: isCompleted ? '#166534' : '#0369a1'}}>
+                                            {isCompleted ? '🎉 Task Completed & Approved' : '⏳ Waiting for Leader Review'}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }) : (
                             <div style={noDataBox}>
-                                <h3>No tasks yet! 😴</h3>
-                                <p>When your Leader assigns a task to <b>{userEmail}</b>, it will appear here in real-time.</p>
+                                <h3>No Tasks Assigned 😴</h3>
+                                <p>Relax! When your leader assigns something, it will pop up here.</p>
                             </div>
                         )}
                     </div>
@@ -161,24 +179,24 @@ const MemberDashboard = () => {
     );
 };
 
-// --- Styles (Fixed for Clean UI) ---
-const pageStyle = { display: 'flex', gap: '30px', padding: '40px', backgroundColor: '#f1f5f9', minHeight: '100vh', fontFamily: '"Segoe UI", Roboto, sans-serif' };
+// --- Styles (CSS-in-JS) ---
+const pageStyle = { display: 'flex', gap: '30px', padding: '40px', backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: '"Inter", sans-serif' };
 const sidebarStyle = { width: '280px', display: 'flex', flexDirection: 'column', gap: '20px' };
-const mainContent = { flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' };
-const infoCard = { backgroundColor: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
-const infoText = { fontSize: '13px', margin: '8px 0', color: '#64748b', wordBreak: 'break-all' };
-const mateItem = { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid #f1f5f9' };
-const avatarStyle = { width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' };
-const headerSection = { marginBottom: '5px' };
-const taskList = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' };
-const taskItem = { backgroundColor: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' };
-const taskTitle = { margin: 0, fontSize: '16px', color: '#1e293b', fontWeight: '600' };
-const deadlineStyle = { fontSize: '12px', color: '#ef4444', marginBottom: '10px', fontWeight: '500' };
-const submissionArea = { borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' };
-const noteInput = { padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', outline: 'none' };
-const fileRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' };
-const submitBtn = { color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' };
-const successBox = { textAlign: 'center', padding: '12px', backgroundColor: '#f0fff4', color: '#166534', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', marginTop: '10px' };
-const noDataBox = { gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: '#64748b', backgroundColor: '#fff', borderRadius: '15px', border: '2px dashed #e2e8f0' };
+const mainContent = { flex: 1, display: 'flex', flexDirection: 'column', gap: '25px' };
+const infoCard = { backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
+const infoText = { fontSize: '13px', margin: '10px 0', color: '#64748b', lineHeight: '1.4' };
+const mateItem = { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid #f1f5f9' };
+const avatarStyle = { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' };
+const headerSection = { borderBottom: '2px solid #e2e8f0', paddingBottom: '15px' };
+const taskList = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '25px' };
+const taskItem = { backgroundColor: '#fff', padding: '25px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' };
+const taskTitle = { margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '700' };
+const deadlineStyle = { fontSize: '12px', color: '#ef4444', marginBottom: '12px', fontWeight: '600', textTransform: 'uppercase' };
+const submissionArea = { borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' };
+const noteInput = { padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '13px', outline: 'none', backgroundColor: '#f9fafb' };
+const fileRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const submitBtn = { color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', transition: '0.3s' };
+const successBox = { textAlign: 'center', padding: '15px', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', marginTop: '20px' };
+const noDataBox = { gridColumn: '1 / -1', textAlign: 'center', padding: '80px', color: '#94a3b8', backgroundColor: '#fff', borderRadius: '20px', border: '3px dashed #e2e8f0' };
 
 export default MemberDashboard;

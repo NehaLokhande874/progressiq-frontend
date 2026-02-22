@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 
 const LeaderDashboard = () => {
-    const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0 });
+    const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, submitted: 0 });
     const [teamTasks, setTeamTasks] = useState([]); 
     const [loading, setLoading] = useState(true);
     
-    // ✅ Login logic pramane 'username' madhe email aahe
     const leaderEmail = localStorage.getItem('username'); 
     const navigate = useNavigate();
 
@@ -18,19 +17,19 @@ const LeaderDashboard = () => {
                 return;
             }
             try {
-                // 1. Leader sathi sarv tasks aanne
                 const res = await API.get(`/tasks/leader/${leaderEmail}`);
                 const allTasks = res.data;
                 
-                // Sorting: Navin tasks var dakhva
                 const sortedTasks = allTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 setTeamTasks(sortedTasks);
 
-                // 2. Stats calculate karne
+                // ✅ Improved Stats Logic
                 const total = allTasks.length;
-                const completed = allTasks.filter(t => t.status === 'Completed' || t.status === 'Submitted').length;
-                const pending = total - completed;
-                setStats({ total, completed, pending });
+                const completed = allTasks.filter(t => t.status === 'Completed').length;
+                const submitted = allTasks.filter(t => t.status === 'Submitted').length;
+                const pending = total - (completed + submitted);
+
+                setStats({ total, completed, pending, submitted });
             } catch (err) {
                 console.error("Dashboard data fetching error:", err);
             } finally {
@@ -40,12 +39,27 @@ const LeaderDashboard = () => {
         fetchDashboardData();
     }, [leaderEmail]);
 
+    // ✅ Task la Final "Completed" karnyacha function
+    const handleEvaluation = async (taskId) => {
+        try {
+            // Backend update call (Assuming you have this route)
+            await API.put(`/tasks/add-feedback/${taskId}`, { 
+                feedback: "Excellent Work! Verified by Leader.",
+                status: 'Completed' 
+            });
+            alert("Task marked as Completed! ✅");
+            window.location.reload(); // Refresh to update counts
+        } catch (err) {
+            console.error("Evaluation error:", err);
+        }
+    };
+
     const handleLogout = () => {
         localStorage.clear();
         navigate('/login');
     };
 
-    // --- Internal Styling ---
+    // --- Styling ---
     const cardStyle = {
         padding: '25px',
         borderRadius: '15px',
@@ -59,7 +73,8 @@ const LeaderDashboard = () => {
 
     const tableHeader = { backgroundColor: '#f8fafc', textAlign: 'left', padding: '15px', color: '#64748b', fontSize: '13px', textTransform: 'uppercase' };
     const tableCell = { padding: '15px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', color: '#1e293b' };
-    const viewBtn = { backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: '0.2s' };
+    const viewBtn = { backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', marginRight: '5px' };
+    const doneBtn = { backgroundColor: '#10b981', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' };
 
     return (
         <div style={{ padding: '40px', fontFamily: '"Inter", sans-serif', backgroundColor: '#f1f5f9', minHeight: '100vh' }}>
@@ -76,14 +91,14 @@ const LeaderDashboard = () => {
             </div>
 
             {/* Overview Stats Cards */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', flexWrap: 'wrap' }}>
                 <div style={cardStyle}>
                     <h2 style={{ color: '#2563eb', margin: '0 0 5px 0', fontSize: '32px' }}>{stats.total}</h2>
-                    <p style={{ color: '#64748b', margin: 0, fontWeight: '500' }}>Total Assignments</p>
+                    <p style={{ color: '#64748b', margin: 0, fontWeight: '500' }}>Total Tasks</p>
                 </div>
                 <div style={cardStyle}>
-                    <h2 style={{ color: '#f59e0b', margin: '0 0 5px 0', fontSize: '32px' }}>{stats.pending}</h2>
-                    <p style={{ color: '#64748b', margin: 0, fontWeight: '500' }}>Pending Tasks</p>
+                    <h2 style={{ color: '#f59e0b', margin: '0 0 5px 0', fontSize: '32px' }}>{stats.submitted}</h2>
+                    <p style={{ color: '#64748b', margin: 0, fontWeight: '500' }}>Waiting Review</p>
                 </div>
                 <div style={cardStyle}>
                     <h2 style={{ color: '#10b981', margin: '0 0 5px 0', fontSize: '32px' }}>{stats.completed}</h2>
@@ -91,13 +106,13 @@ const LeaderDashboard = () => {
                 </div>
             </div>
 
-            {/* Quick Actions Section */}
+            {/* Quick Actions */}
             <div style={{ margin: '40px 0', textAlign: 'center' }}>
                 <button 
                     onClick={() => navigate('/leader-tasks')} 
                     style={{ backgroundColor: '#2563eb', color: 'white', padding: '18px 40px', fontSize: '16px', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.3)' }}
                 >
-                    + Assign New Task to Members
+                    + Assign New Task
                 </button>
             </div>
 
@@ -112,50 +127,46 @@ const LeaderDashboard = () => {
                         <thead>
                             <tr>
                                 <th style={tableHeader}>Member</th>
-                                <th style={tableHeader}>Task Assigned</th>
+                                <th style={tableHeader}>Task</th>
                                 <th style={tableHeader}>Status</th>
-                                <th style={tableHeader}>Evaluation</th>
+                                <th style={tableHeader}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {teamTasks.length > 0 ? teamTasks.map((task) => (
                                 <tr key={task._id}>
                                     <td style={tableCell}><b>{task.assignedTo}</b></td>
-                                    <td style={tableCell}>{task.title || "Untitled Task"}</td>
+                                    <td style={tableCell}>{task.title || "Untitled"}</td>
                                     <td style={tableCell}>
                                         <span style={{ 
                                             padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
-                                            backgroundColor: (task.status === 'Completed' || task.status === 'Submitted') ? '#dcfce7' : '#fee2e2',
-                                            color: (task.status === 'Completed' || task.status === 'Submitted') ? '#166534' : '#991b1b'
+                                            backgroundColor: task.status === 'Completed' ? '#dcfce7' : task.status === 'Submitted' ? '#e0f2fe' : '#fee2e2',
+                                            color: task.status === 'Completed' ? '#166534' : task.status === 'Submitted' ? '#0369a1' : '#991b1b'
                                         }}>
                                             {task.status}
                                         </span>
                                     </td>
                                     <td style={tableCell}>
-                                        <button 
-                                            onClick={() => navigate(`/member-details/${task.assignedTo}`)} 
-                                            style={viewBtn}
-                                        >
-                                            Analyze Work 📈
+                                        <button onClick={() => navigate(`/member-details/${task.assignedTo}`)} style={viewBtn}>
+                                            View
                                         </button>
+                                        
+                                        {/* ✅ Show Complete button only if task is Submitted */}
+                                        {task.status === 'Submitted' && (
+                                            <button onClick={() => handleEvaluation(task._id)} style={doneBtn}>
+                                                Approve ✅
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                        No tasks created. Start by assigning your first task!
-                                    </td>
+                                    <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No tasks assigned yet.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 )}
-            </div>
-
-            <div style={{ marginTop: '30px', padding: '15px 25px', backgroundColor: '#eff6ff', borderRadius: '10px', borderLeft: '5px solid #2563eb' }}>
-                <p style={{ fontSize: '13px', color: '#1e40af', margin: 0 }}>
-                    <b>💡 Pro Tip:</b> Jeva member file upload karel, teva status automatic "Submitted" hoil. Tumhi "Analyze Work" var click karun tyanchi file check karu shakta.
-                </p>
             </div>
         </div>
     );
