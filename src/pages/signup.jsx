@@ -3,12 +3,10 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import API from '../api/axios';
 
 const Signup = () => {
-    // URL madhun email ani role ghenyasathi query parameters
     const query = new URLSearchParams(useLocation().search);
     const initialEmail = query.get('email') || '';
     const initialRole = query.get('role') || 'Member';
 
-    // State initialization: URL params aseltar te pahile ghetle jatil
     const [formData, setFormData] = useState({
         username: '', 
         email: initialEmail, 
@@ -16,9 +14,9 @@ const Signup = () => {
         role: initialRole
     });
 
+    const [loading, setLoading] = useState(false); // To handle button state
     const navigate = useNavigate();
 
-    // Jar URL badalli tar form data parat update karnyathi useEffect
     useEffect(() => {
         if (initialEmail || initialRole) {
             setFormData(prev => ({
@@ -29,18 +27,34 @@ const Signup = () => {
         }
     }, [initialEmail, initialRole]);
 
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Basic Client-side Validation
+        if (formData.password.length < 6) {
+            return alert("Password must be at least 6 characters long");
+        }
+
+        setLoading(true); // Disable button
         try {
-            /** * ✅ CORRECTED ENDPOINT: '/auth/signup'
-             * Note: Axios baseURL madhe '/api' asne garjeche aahe 
+            /** * Note: Ensure API baseURL in axios.js is 'https://progresiq-backend.onrender.com/api'
              */
-            await API.post('/auth/signup', formData); 
-            alert("Registration Successful!");
-            navigate('/'); 
+            const response = await API.post('/auth/signup', formData); 
+            
+            if (response.status === 201 || response.status === 200) {
+                alert("✅ Registration Successful! Please login.");
+                navigate('/'); 
+            }
         } catch (err) {
-            // Error handling: backend kadun yenara msg dakhva
-            alert(err.response?.data?.error || err.response?.data?.msg || "Signup failed");
+            // Error handling from backend
+            const errorMsg = err.response?.data?.error || err.response?.data?.msg || "Signup failed. Please try again.";
+            alert("❌ " + errorMsg);
+        } finally {
+            setLoading(false); // Re-enable button
         }
     };
 
@@ -57,67 +71,79 @@ const Signup = () => {
         textAlign: 'left', fontFamily: 'Arial, sans-serif'
     };
 
+    const labelStyle = { fontWeight: 'bold', fontSize: '14px', color: '#333' };
+
     const inputStyle = {
-        width: '100%', padding: '12px', margin: '10px 0 20px 0',
-        borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box'
+        width: '100%', padding: '12px', margin: '8px 0 18px 0',
+        borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box',
+        fontSize: '14px'
     };
 
     const btnStyle = {
-        width: '100%', padding: '12px', backgroundColor: '#0047ff',
+        width: '100%', padding: '12px', 
+        backgroundColor: loading ? '#668fff' : '#0047ff',
         color: 'white', border: 'none', borderRadius: '5px',
-        cursor: 'pointer', fontSize: '16px', fontWeight: 'bold'
+        cursor: loading ? 'not-allowed' : 'pointer', 
+        fontSize: '16px', fontWeight: 'bold', transition: '0.3s'
     };
 
     return (
         <div style={pageStyle}>
             <div style={cardStyle}>
-                <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Create New Account</h2>
+                <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>Create New Account</h2>
                 <form onSubmit={handleSubmit}>
-                    <label>Full Name</label>
+                    
+                    <label style={labelStyle}>Full Name</label>
                     <input 
                         type="text" 
-                        placeholder="Name" 
+                        name="username"
+                        placeholder="Enter full name" 
                         style={inputStyle} 
                         value={formData.username}
-                        onChange={e => setFormData({...formData, username: e.target.value})} 
+                        onChange={handleChange} 
                         required 
                     />
                     
-                    <label>Email Address</label>
+                    <label style={labelStyle}>Email Address</label>
                     <input 
                         type="email" 
-                        placeholder="Email" 
+                        name="email"
+                        placeholder="example@gmail.com" 
                         style={inputStyle} 
                         value={formData.email}
-                        onChange={e => setFormData({...formData, email: e.target.value})} 
+                        onChange={handleChange} 
                         required 
                     />
                     
-                    <label>Password</label>
+                    <label style={labelStyle}>Password</label>
                     <input 
                         type="password" 
-                        placeholder="Password" 
+                        name="password"
+                        placeholder="Min. 6 characters" 
                         style={inputStyle} 
                         value={formData.password}
-                        onChange={e => setFormData({...formData, password: e.target.value})} 
+                        onChange={handleChange} 
                         required 
                     />
                     
-                    <label>Register as:</label>
+                    <label style={labelStyle}>Register as:</label>
                     <select 
+                        name="role"
                         style={inputStyle} 
                         value={formData.role}
-                        onChange={e => setFormData({...formData, role: e.target.value})}
+                        onChange={handleChange}
                     >
                         <option value="Member">Member</option>
                         <option value="Leader">Leader</option>
                         <option value="Mentor">Mentor</option>
                     </select>
                     
-                    <button type="submit" style={btnStyle}>Sign Up</button>
+                    <button type="submit" style={btnStyle} disabled={loading}>
+                        {loading ? 'Processing...' : 'Sign Up'}
+                    </button>
                     
-                    <p style={{ textAlign: 'center', marginTop: '15px' }}>
-                        Already have an account? <Link to="/" style={{ color: '#0047ff', textDecoration: 'none' }}>Login</Link>
+                    <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px' }}>
+                        Already have an account? <Link to="/" style={{ color: '#0047ff', textDecoration: 'none', fontWeight: 'bold' }}>Login</Link>
                     </p>
                 </form>
             </div>
