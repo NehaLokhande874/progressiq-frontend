@@ -13,7 +13,7 @@ const Signup = () => {
         username: '', 
         email: initialEmail, 
         password: '', 
-        role: initialRole
+        role: leaderEmailFromLink ? 'Member' : initialRole // Force Member if invited
     });
 
     const [loading, setLoading] = useState(false);
@@ -24,10 +24,10 @@ const Signup = () => {
             setFormData(prev => ({
                 ...prev,
                 email: initialEmail,
-                role: initialRole
+                role: leaderEmailFromLink ? 'Member' : initialRole
             }));
         }
-    }, [initialEmail, initialRole]);
+    }, [initialEmail, initialRole, leaderEmailFromLink]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -93,10 +93,12 @@ const Signup = () => {
             <div style={cardStyle}>
                 <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>Create New Account</h2>
                 
-                {/* ✅ Show banner if joining via invite link */}
+                {/* ✅ Join Banner */}
                 {leaderEmailFromLink && (
                     <div style={{ backgroundColor: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#276749' }}>
                         🎉 You're joining <b>{leaderEmailFromLink}</b>'s team!
+                        <br/>
+                        <small>Role set to: <b>Member</b></small>
                     </div>
                 )}
 
@@ -122,12 +124,20 @@ const Signup = () => {
                         onChange={handleChange} required 
                     />
                     
-                    <label style={labelStyle}>Register as:</label>
-                    <select name="role" style={inputStyle} value={formData.role} onChange={handleChange}>
-                        <option value="Member">Member</option>
-                        <option value="Leader">Leader</option>
-                        <option value="Mentor">Mentor</option>
-                    </select>
+                    {/* ✅ Conditional Role Selection */}
+                    {!leaderEmailFromLink ? (
+                        <>
+                            <label style={labelStyle}>Register as:</label>
+                            <select name="role" style={inputStyle} value={formData.role} onChange={handleChange}>
+                                <option value="Member">Member</option>
+                                <option value="Leader">Leader</option>
+                                <option value="Mentor">Mentor</option>
+                            </select>
+                        </>
+                    ) : (
+                        // Hidden input to ensure role is sent if invited
+                        <input type="hidden" name="role" value="Member" />
+                    )}
                     
                     <button type="submit" style={btnStyle} disabled={loading}>
                         {loading ? 'Processing...' : 'Sign Up'}
