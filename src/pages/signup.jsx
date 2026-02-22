@@ -6,6 +6,8 @@ const Signup = () => {
     const query = new URLSearchParams(useLocation().search);
     const initialEmail = query.get('email') || '';
     const initialRole = query.get('role') || 'Member';
+    // ✅ Read leaderEmail from invite link
+    const leaderEmailFromLink = query.get('leader') || '';
 
     const [formData, setFormData] = useState({
         username: '', 
@@ -14,7 +16,7 @@ const Signup = () => {
         role: initialRole
     });
 
-    const [loading, setLoading] = useState(false); // To handle button state
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -34,31 +36,30 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Basic Client-side Validation
         if (formData.password.length < 6) {
             return alert("Password must be at least 6 characters long");
         }
 
-        setLoading(true); // Disable button
+        setLoading(true);
         try {
-            /** * Note: Ensure API baseURL in axios.js is 'https://progresiq-backend.onrender.com/api'
-             */
-            const response = await API.post('/auth/signup', formData); 
+            // ✅ Send leaderEmail along with signup data
+            const response = await API.post('/auth/signup', { 
+                ...formData,
+                leaderEmail: leaderEmailFromLink  // connects member to leader
+            }); 
             
             if (response.status === 201 || response.status === 200) {
                 alert("✅ Registration Successful! Please login.");
                 navigate('/'); 
             }
         } catch (err) {
-            // Error handling from backend
             const errorMsg = err.response?.data?.error || err.response?.data?.msg || "Signup failed. Please try again.";
             alert("❌ " + errorMsg);
         } finally {
-            setLoading(false); // Re-enable button
+            setLoading(false);
         }
     };
 
-    // --- Inline Styles ---
     const pageStyle = {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         width: '100vw', height: '100vh', margin: 0, padding: 0,
@@ -91,48 +92,38 @@ const Signup = () => {
         <div style={pageStyle}>
             <div style={cardStyle}>
                 <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>Create New Account</h2>
+                
+                {/* ✅ Show banner if joining via invite link */}
+                {leaderEmailFromLink && (
+                    <div style={{ backgroundColor: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#276749' }}>
+                        🎉 You're joining <b>{leaderEmailFromLink}</b>'s team!
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
-                    
                     <label style={labelStyle}>Full Name</label>
                     <input 
-                        type="text" 
-                        name="username"
-                        placeholder="Enter full name" 
-                        style={inputStyle} 
-                        value={formData.username}
-                        onChange={handleChange} 
-                        required 
+                        type="text" name="username" placeholder="Enter full name" 
+                        style={inputStyle} value={formData.username}
+                        onChange={handleChange} required 
                     />
                     
                     <label style={labelStyle}>Email Address</label>
                     <input 
-                        type="email" 
-                        name="email"
-                        placeholder="example@gmail.com" 
-                        style={inputStyle} 
-                        value={formData.email}
-                        onChange={handleChange} 
-                        required 
+                        type="email" name="email" placeholder="example@gmail.com" 
+                        style={inputStyle} value={formData.email}
+                        onChange={handleChange} required 
                     />
                     
                     <label style={labelStyle}>Password</label>
                     <input 
-                        type="password" 
-                        name="password"
-                        placeholder="Min. 6 characters" 
-                        style={inputStyle} 
-                        value={formData.password}
-                        onChange={handleChange} 
-                        required 
+                        type="password" name="password" placeholder="Min. 6 characters" 
+                        style={inputStyle} value={formData.password}
+                        onChange={handleChange} required 
                     />
                     
                     <label style={labelStyle}>Register as:</label>
-                    <select 
-                        name="role"
-                        style={inputStyle} 
-                        value={formData.role}
-                        onChange={handleChange}
-                    >
+                    <select name="role" style={inputStyle} value={formData.role} onChange={handleChange}>
                         <option value="Member">Member</option>
                         <option value="Leader">Leader</option>
                         <option value="Mentor">Mentor</option>
