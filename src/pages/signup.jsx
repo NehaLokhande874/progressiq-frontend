@@ -3,7 +3,10 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import API from '../api/axios';
 
 const Signup = () => {
-    const query = new URLSearchParams(useLocation().search);
+    const location = useLocation();
+    const query = new URLSearchParams(location.search);
+    
+    // 🔗 Invite Link parameters
     const initialEmail = query.get('email') || '';
     const initialRole = query.get('role') || 'Member';
     const leaderEmailFromLink = query.get('leader') || '';
@@ -12,21 +15,23 @@ const Signup = () => {
         username: '', 
         email: initialEmail, 
         password: '', 
+        // Jar leader link asel tar role 'Member' lock kara, nahitar dynamic dya
         role: leaderEmailFromLink ? 'Member' : initialRole,
-        adminSecretKey: '' // ✅ Navin field Admin banyasathi
+        adminSecretKey: '',
+        invitedBy: leaderEmailFromLink // Backend la mahiti denyasathi navin field
     });
 
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
+    // URL parameters badalle ki form update karne
     useEffect(() => {
-        if (initialEmail || initialRole) {
-            setFormData(prev => ({
-                ...prev,
-                email: initialEmail,
-                role: leaderEmailFromLink ? 'Member' : initialRole
-            }));
-        }
+        setFormData(prev => ({
+            ...prev,
+            email: initialEmail,
+            role: leaderEmailFromLink ? 'Member' : initialRole,
+            invitedBy: leaderEmailFromLink
+        }));
     }, [initialEmail, initialRole, leaderEmailFromLink]);
 
     const handleChange = (e) => {
@@ -42,11 +47,8 @@ const Signup = () => {
 
         setLoading(true);
         try {
-            // ✅ Send everything to backend
-            const response = await API.post('/auth/signup', { 
-                ...formData,
-                leaderEmail: leaderEmailFromLink
-            }); 
+            // ✅ Data backend la pathvatana invitedBy (leaderEmail) include kela aahe
+            const response = await API.post('/auth/signup', formData); 
             
             if (response.status === 201 || response.status === 200) {
                 alert("✅ Registration Successful! Please login.");
@@ -72,9 +74,10 @@ const Signup = () => {
             <div style={cardStyle}>
                 <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>Create New Account</h2>
                 
+                {/* 📩 Invite Info Box */}
                 {leaderEmailFromLink && (
                     <div style={{ backgroundColor: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#276749' }}>
-                        🎉 Joining <b>{leaderEmailFromLink}</b>'s team!
+                        🎉 Joining <b>{leaderEmailFromLink}</b>'s team as a Member!
                     </div>
                 )}
 
@@ -88,8 +91,8 @@ const Signup = () => {
                     <label style={labelStyle}>Password</label>
                     <input type="password" name="password" placeholder="Min. 6 characters" style={inputStyle} value={formData.password} onChange={handleChange} required />
                     
-                    {/* Role Selection */}
-                    {!leaderEmailFromLink && (
+                    {/* Role Selection (Fakt jar link nasel tarach dakhva) */}
+                    {!leaderEmailFromLink ? (
                         <>
                             <label style={labelStyle}>Register as:</label>
                             <select name="role" style={inputStyle} value={formData.role} onChange={handleChange}>
@@ -99,9 +102,11 @@ const Signup = () => {
                                 <option value="Admin">Admin (Super Power)</option>
                             </select>
                         </>
+                    ) : (
+                        <input type="hidden" name="role" value="Member" />
                     )}
 
-                    {/* ✅ Secret Key Field: Fakt Admin role select kelyavar disel */}
+                    {/* ✅ Admin Secret Key Field */}
                     {formData.role === 'Admin' && (
                         <div style={{ padding: '10px', backgroundColor: '#fff5f5', borderRadius: '6px', marginBottom: '15px', border: '1px solid #feb2b2' }}>
                             <label style={{ ...labelStyle, color: '#c53030' }}>Admin Secret Key</label>
