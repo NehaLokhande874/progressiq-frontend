@@ -9,7 +9,8 @@ const LeaderTask = () => {
     const [isTaskSaved, setIsTaskSaved] = useState(false);
     const [loading, setLoading] = useState(false);
     
-    const leaderEmail = localStorage.getItem('username'); 
+    // ✅ Using 'email' from storage to ensure we have the leader's unique ID
+    const leaderEmail = localStorage.getItem('email') || localStorage.getItem('username'); 
     const navigate = useNavigate();
 
     // 1. Fetching Team Data
@@ -37,13 +38,19 @@ const LeaderTask = () => {
         setTasksList(updatedList);
     };
 
-    // 2. Save Tasks
+    // 2. Save Tasks (Optimized for Team Logic)
     const handleSaveAllTasks = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
+            // ✅ Mapping tasks to ensure every single one carries the leaderEmail
+            const tasksWithLeader = tasksList.map(task => ({
+                ...task,
+                leaderEmail: leaderEmail
+            }));
+
             const response = await API.post('/tasks/create-multiple', { 
-                tasks: tasksList, 
+                tasks: tasksWithLeader, 
                 leaderEmail 
             });
 
@@ -54,13 +61,14 @@ const LeaderTask = () => {
                 setTasksList([{ title: '', assignedTo: '', deadline: '' }]);
             }
         } catch (err) { 
-            alert("❌ Save Error! Server check kara."); 
+            console.error(err);
+            alert("❌ Save Error! Check if backend is active."); 
         } finally {
             setLoading(false);
         }
     };
 
-    // 3. Generate Link (IP 10.157.236.1)
+    // 3. Generate Link (Share with Team)
     const handleGenerateLink = async () => {
         try {
             const res = await API.post('/tasks/invite', { leaderEmail });
@@ -97,7 +105,7 @@ const LeaderTask = () => {
                     <h2 style={{ margin: 0, color: '#1a202c' }}>Leader Task Manager</h2>
                 </div>
 
-                {/* Assignment Section */}
+                {/* 1. Assignment Section (With Deadline) */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitle}>1. Assign New Tasks</h3>
                     <form onSubmit={handleSaveAllTasks}>
@@ -135,7 +143,7 @@ const LeaderTask = () => {
                     )}
                 </div>
 
-                {/* 📋 Team Status Section (ATA CLICKABLE AAHE) */}
+                {/* 📋 2. Team Progress Section */}
                 <div style={cardStyle}>
                     <h3 style={sectionTitle}>2. Team Progress</h3>
                     <div style={{ overflowX: 'auto' }}>
@@ -150,7 +158,6 @@ const LeaderTask = () => {
                             <tbody>
                                 {myTasks.length > 0 ? myTasks.map(t => (
                                     <tr key={t._id} style={trStyle}>
-                                        {/* Dynamic Clickable Route */}
                                         <td 
                                             style={clickableTd} 
                                             onClick={() => navigate(`/member-details/${t.assignedTo}`)}
@@ -158,6 +165,8 @@ const LeaderTask = () => {
                                         >
                                             <div style={taskTitle}>{t.title}</div>
                                             <div style={memberSubText}>{t.assignedTo} 📈</div>
+                                            {/* Show deadline in table */}
+                                            <div style={{fontSize: '11px', color: '#718096'}}>Due: {new Date(t.deadline).toLocaleDateString()}</div>
                                         </td>
                                         <td style={tdCentered}>
                                             <span style={statusBadge(t.status)}>
@@ -182,7 +191,7 @@ const LeaderTask = () => {
     );
 };
 
-// --- Updated & Additional Styles ---
+// --- Styles (Kept your exact styling) ---
 const containerStyle = { display: 'flex', justifyContent: 'center', backgroundColor: '#f7fafc', minHeight: '100vh', padding: '24px', fontFamily: 'Segoe UI, sans-serif' };
 const wrapperStyle = { width: '100%', maxWidth: '900px' };
 const navHeader = { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' };
@@ -204,7 +213,7 @@ const tableHead = { backgroundColor: '#edf2f7' };
 const thStyle = { padding: '14px', textAlign: 'left', fontSize: '12px', color: '#718096', textTransform: 'uppercase' };
 const trStyle = { borderBottom: '1px solid #edf2f7', transition: 'background 0.2s' };
 const tdStyle = { padding: '16px 14px' };
-const clickableTd = { padding: '16px 14px', cursor: 'pointer', backgroundColor: 'rgba(49, 130, 206, 0.03)' }; // Clickable background
+const clickableTd = { padding: '16px 14px', cursor: 'pointer', backgroundColor: 'rgba(49, 130, 206, 0.03)' };
 const tdCentered = { padding: '16px 14px', textAlign: 'center' };
 const taskTitle = { fontWeight: 'bold', color: '#2d3748', textDecoration: 'underline' };
 const memberSubText = { fontSize: '12px', color: '#3182ce', fontWeight: '500' };

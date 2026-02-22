@@ -15,16 +15,12 @@ const MemberDetailView = () => {
     const [showForm, setShowForm] = useState(false);
     const [newTask, setNewTask] = useState({ title: '', deadline: '' });
 
-    // 💡 Dynamic Host Detection: File view sathi jithe IP lagto
-    const currentHost = window.location.hostname;
-
     const userRole = localStorage.getItem('role');
-    const leaderEmail = localStorage.getItem('email'); // 'username' jagi 'email' vapra sync sathi
+    const leaderEmail = localStorage.getItem('email'); 
 
     useEffect(() => {
         const fetchMemberData = async () => {
             try {
-                // Backend API call
                 const res = await API.get(`/tasks/member/${email}`);
                 setTasks(res.data);
             } catch (err) {
@@ -41,6 +37,7 @@ const MemberDetailView = () => {
         if (!newTask.title || !newTask.deadline) return alert("Please fill all fields!");
 
         try {
+            // ✅ Leader ne task assign kelyavar to direct Member la disto
             const res = await API.post('/tasks/assign', {
                 email: email,
                 title: newTask.title,
@@ -68,16 +65,29 @@ const MemberDetailView = () => {
         }
     };
 
+    // --- CHART LOGIC ---
     const completed = tasks.filter(t => t.status === 'Completed').length;
-    const pending = tasks.length - completed;
+    const active = tasks.filter(t => t.status === 'Active').length;
+    const pending = tasks.length - (completed + active);
 
     const chartData = {
-        labels: ['Completed', 'Pending'],
+        labels: ['Completed', 'Active', 'Pending'],
         datasets: [{
-            data: [completed, pending],
-            backgroundColor: ['#48bb78', '#f56565'],
+            data: [completed, active, pending],
+            backgroundColor: ['#38a169', '#3182ce', '#e53e3e'],
             hoverOffset: 4
         }],
+    };
+
+    // --- Status Badge Style (Active & Completed = Green) ---
+    const statusBadge = (status) => {
+        const isGood = status === 'Completed' || status === 'Active';
+        return {
+            padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '800',
+            backgroundColor: isGood ? '#dcfce7' : '#fee2e2',
+            color: isGood ? '#166534' : '#991b1b',
+            textTransform: 'uppercase'
+        };
     };
 
     if (loading) return <div style={loaderStyle}>Analyzing Member Data...</div>;
@@ -87,11 +97,11 @@ const MemberDetailView = () => {
             <div style={containerStyle}>
                 {/* --- TOP BAR --- */}
                 <div style={topBar}>
-                    <button onClick={() => navigate(-1)} style={backBtn}>← Back to Dashboard</button>
-                    <h2 style={headerTitle}>Analysis for: <span style={emailHighlight}>{email}</span></h2>
+                    <button onClick={() => navigate(-1)} style={backBtn}>← Back</button>
+                    <h2 style={headerTitle}>Analysis: <span style={emailHighlight}>{email}</span></h2>
                 </div>
 
-                {/* --- STATS & CHART SECTION --- */}
+                {/* --- STATS & CHART --- */}
                 <div style={dashboardGrid}>
                     <div style={chartContainer}>
                         <h4 style={cardTitle}>Performance Overview</h4>
@@ -102,21 +112,17 @@ const MemberDetailView = () => {
 
                     <div style={statsGrid}>
                         <div style={{ ...statCard, borderTop: '4px solid #3182ce' }}>
-                            <span style={statLabel}>Total Tasks Assigned</span>
+                            <span style={statLabel}>Total Tasks</span>
                             <span style={statValue}>{tasks.length}</span>
                         </div>
                         <div style={{ ...statCard, borderTop: '4px solid #38a169' }}>
-                            <span style={statLabel}>Successfully Completed</span>
+                            <span style={statLabel}>Completed</span>
                             <span style={{ ...statValue, color: '#38a169' }}>{completed}</span>
-                        </div>
-                        <div style={{ ...statCard, borderTop: '4px solid #e53e3e' }}>
-                            <span style={statLabel}>Pending / Active</span>
-                            <span style={{ ...statValue, color: '#e53e3e' }}>{pending}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* --- LEADER ASSIGNMENT FORM --- */}
+                {/* --- LEADER ASSIGNMENT --- */}
                 {userRole === 'Leader' && (
                     <div style={actionRow}>
                         {!showForm ? (
@@ -134,8 +140,8 @@ const MemberDetailView = () => {
                                         value={newTask.deadline} onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
                                     />
                                     <div style={btnGroup}>
-                                        <button onClick={handleAssignTask} style={submitBtn}>Confirm Assign</button>
-                                        <button onClick={() => setShowForm(false)} style={cancelBtn}>Cancel</button>
+                                        <button onClick={handleAssignTask} style={submitBtn}>Assign</button>
+                                        <button onClick={() => setShowForm(false)} style={cancelBtn}>X</button>
                                     </div>
                                 </div>
                             </div>
@@ -150,10 +156,10 @@ const MemberDetailView = () => {
                         <table style={mainTable}>
                             <thead>
                                 <tr style={headerRow}>
-                                    <th style={thStyle}>Task Info</th>
+                                    <th style={thStyle}>Task</th>
                                     <th style={thStyle}>Status</th>
-                                    <th style={thStyle}>Member Note</th>
-                                    <th style={thStyle}>Submission & Feedback</th>
+                                    <th style={thStyle}>Submission</th>
+                                    <th style={thStyle}>Feedback</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -166,38 +172,36 @@ const MemberDetailView = () => {
                                         <td style={tdStyle}>
                                             <span style={statusBadge(task.status)}>{task.status}</span>
                                         </td>
-                                        <td style={tdStyle}>{task.submissionNote || "No note added."}</td>
                                         <td style={tdStyle}>
-                                            <div style={proofCol}>
-                                                {task.fileUrl ? (
-                                                    // 💡 FIX: Manually IP taknyachya jagi currentHost vapra
-                                                    <a href={`http://${currentHost}:5000${task.fileUrl}`} target="_blank" rel="noreferrer" style={viewLink}>
-                                                        View Proof File 📄
-                                                    </a>
-                                                ) : <span style={noProof}>Pending Submission</span>}
-
-                                                <div style={feedbackArea}>
-                                                    {task.feedback ? (
-                                                        <div style={feedbackBox}>
-                                                            <strong>Feedback:</strong> {task.feedback}
-                                                        </div>
-                                                    ) : (
-                                                        userRole === 'Leader' && task.status === 'Completed' && (
-                                                            <div style={feedbackInputRow}>
-                                                                <input 
-                                                                    type="text" placeholder="Add feedback..." style={smallInput}
-                                                                    onChange={(e) => setFeedbackTexts({...feedbackTexts, [task._id]: e.target.value})}
-                                                                />
-                                                                <button onClick={() => handleFeedbackSubmit(task._id)} style={smallBtn}>Send</button>
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </div>
+                                            {/* ✅ Fixed: Backend pramane direct task.fileUrl vapra */}
+                                            {task.fileUrl ? (
+                                                <a href={`${API.defaults.baseURL.replace('/api', '')}${task.fileUrl}`} 
+                                                   target="_blank" rel="noreferrer" style={viewLink}>
+                                                    View Proof 📄
+                                                </a>
+                                            ) : (
+                                                <span style={noProof}>Pending...</span>
+                                            )}
+                                            <div style={{fontSize: '11px', color: '#64748b', marginTop: '4px'}}>{task.submissionNote}</div>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            {task.feedback ? (
+                                                <div style={feedbackBox}>{task.feedback}</div>
+                                            ) : (
+                                                userRole === 'Leader' && (
+                                                    <div style={feedbackInputRow}>
+                                                        <input 
+                                                            type="text" placeholder="Comment..." style={smallInput}
+                                                            onChange={(e) => setFeedbackTexts({...feedbackTexts, [task._id]: e.target.value})}
+                                                        />
+                                                        <button onClick={() => handleFeedbackSubmit(task._id)} style={smallBtn}>OK</button>
+                                                    </div>
+                                                )
+                                            )}
                                         </td>
                                     </tr>
                                 )) : (
-                                    <tr><td colSpan="4" style={emptyMsg}>No tasks found. Assign one to start tracking.</td></tr>
+                                    <tr><td colSpan="4" style={emptyMsg}>No tasks found for this member.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -208,58 +212,46 @@ const MemberDetailView = () => {
     );
 };
 
-// --- STYLES (Center Aligned & Responsive) ---
-const pageWrapper = { backgroundColor: '#f1f5f9', minHeight: '100vh', padding: '40px 20px' };
+// --- STYLES ---
+const pageWrapper = { backgroundColor: '#f1f5f9', minHeight: '100vh', padding: '20px' };
 const containerStyle = { maxWidth: '1000px', margin: '0 auto' };
-const topBar = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '30px' };
-const backBtn = { padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#fff', fontWeight: '600', color: '#475569', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
-const headerTitle = { margin: 0, fontSize: '22px', color: '#1e293b' };
-const emailHighlight = { color: '#2563eb', fontWeight: '700' };
-
-const dashboardGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '300px' };
-const chartContainer = { backgroundColor: '#fff', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' };
-const pieWrapper = { height: '200px', position: 'relative' };
-const statsGrid = { display: 'flex', flexDirection: 'column', gap: '12px' };
-const statCard = { backgroundColor: '#fff', padding: '18px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' };
-const statLabel = { fontSize: '14px', color: '#64748b', fontWeight: '500' };
-const statValue = { fontSize: '24px', fontWeight: '800' };
-const cardTitle = { marginBottom: '15px', fontSize: '15px', color: '#475569', textAlign: 'center' };
-
-const actionRow = { marginBottom: '30px', display: 'flex', justifyContent: 'center' };
-const primaryBtn = { backgroundColor: '#2563eb', color: '#fff', padding: '12px 30px', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)' };
-const formCard = { backgroundColor: '#fff', padding: '25px', borderRadius: '16px', border: '1px solid #e2e8f0', width: '100%' };
-const formTitle = { margin: '0 0 15px 0', fontSize: '17px', textAlign: 'center' };
-const formRow = { display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' };
-const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', width: '250px' };
-const btnGroup = { display: 'flex', gap: '10px' };
-const submitBtn = { padding: '12px 20px', backgroundColor: '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' };
-const cancelBtn = { padding: '12px 20px', backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' };
-
-const tableCard = { backgroundColor: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', marginTop: '-250px' };
-const tableHeading = { margin: '0 0 15px 0', fontSize: '17px', color: '#1e293b' };
+const topBar = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' };
+const backBtn = { padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', backgroundColor: '#fff', fontWeight: '600', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
+const headerTitle = { fontSize: '18px', fontWeight: '700' };
+const emailHighlight = { color: '#2563eb' };
+const dashboardGrid = { display: 'grid', gridTemplateColumns: 'window.innerWidth > 768 ? 1fr 1fr : 1fr', gap: '20px', marginBottom: '20px' };
+const chartContainer = { backgroundColor: '#fff', padding: '15px', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' };
+const pieWrapper = { height: '160px', position: 'relative' };
+const statsGrid = { display: 'flex', flexDirection: 'column', gap: '10px' };
+const statCard = { backgroundColor: '#fff', padding: '18px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' };
+const statLabel = { fontSize: '13px', color: '#64748b', fontWeight: '600' };
+const statValue = { fontSize: '22px', fontWeight: '800' };
+const cardTitle = { fontSize: '14px', marginBottom: '15px', fontWeight: '600', color: '#475569' };
+const actionRow = { marginBottom: '20px', display: 'flex', justifyContent: 'center' };
+const primaryBtn = { backgroundColor: '#2563eb', color: '#fff', padding: '12px 24px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' };
+const formCard = { backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', width: '100%' };
+const formTitle = { fontSize: '15px', marginBottom: '15px', fontWeight: '600' };
+const formRow = { display: 'flex', gap: '10px', flexWrap: 'wrap' };
+const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1, minWidth: '150px' };
+const btnGroup = { display: 'flex', gap: '5px' };
+const submitBtn = { backgroundColor: '#059669', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '600', cursor: 'pointer' };
+const cancelBtn = { backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 15px', cursor: 'pointer' };
+const tableCard = { backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' };
+const tableHeading = { fontSize: '16px', marginBottom: '15px', fontWeight: '700', color: '#1e293b' };
 const mainTable = { width: '100%', borderCollapse: 'collapse' };
-const thStyle = { textAlign: 'left', padding: '12px', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '12px', textTransform: 'uppercase' };
-const trStyle = { borderBottom: '1px solid #f8fafc' };
+const thStyle = { textAlign: 'left', padding: '12px', borderBottom: '2px solid #f1f5f9', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' };
+const trStyle = { borderBottom: '1px solid #f1f5f9' };
 const tdStyle = { padding: '15px 12px', verticalAlign: 'middle' };
-const taskName = { fontWeight: '700', color: '#334155', fontSize: '14px' };
-const taskDate = { fontSize: '11px', color: '#94a3b8' };
-const viewLink = { color: '#2563eb', textDecoration: 'none', fontSize: '13px', fontWeight: '600' };
-const noProof = { color: '#cbd5e1', fontSize: '12px', fontStyle: 'italic' };
-const feedbackArea = { marginTop: '8px' };
-const feedbackBox = { padding: '8px', backgroundColor: '#f0f9ff', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', color: '#0369a1' };
+const taskName = { fontWeight: '700', fontSize: '14px', color: '#334155' };
+const taskDate = { fontSize: '11px', color: '#94a3b8', marginTop: '4px' };
+const viewLink = { color: '#2563eb', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', border: '1px solid #2563eb', padding: '4px 8px', borderRadius: '4px' };
+const noProof = { color: '#cbd5e1', fontSize: '11px', fontStyle: 'italic' };
+const feedbackBox = { padding: '8px 12px', backgroundColor: '#f0f9ff', borderRadius: '6px', fontSize: '12px', color: '#0c4a6e', borderLeft: '4px solid #0ea5e9' };
 const feedbackInputRow = { display: 'flex', gap: '5px' };
-const smallInput = { flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #e2e8f0', fontSize: '12px' };
-const smallBtn = { padding: '6px 10px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' };
-const emptyMsg = { textAlign: 'center', padding: '30px', color: '#94a3b8' };
+const smallInput = { flex: 1, padding: '8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #e2e8f0' };
+const smallBtn = { backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', padding: '0 12px', cursor: 'pointer', fontWeight: '600' };
+const emptyMsg = { textAlign: 'center', padding: '40px', color: '#94a3b8' };
 const headerRow = { backgroundColor: '#f8fafc' };
-const proofCol = { display: 'flex', flexDirection: 'column', gap: '3px' };
-
-const statusBadge = (status) => ({
-    display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: '800',
-    backgroundColor: status === 'Completed' ? '#dcfce7' : '#fee2e2',
-    color: status === 'Completed' ? '#166534' : '#991b1b'
-});
-
-const loaderStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: '600', color: '#64748b' };
+const loaderStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '18px', color: '#2563eb', fontWeight: '600' };
 
 export default MemberDetailView;
