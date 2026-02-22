@@ -155,12 +155,7 @@ const LeaderTask = () => {
                                             {/* ✅ Green for Active, Green for Completed/Submitted */}
                                             <span style={statusBadge(t.status)}>{t.status || '-'}</span>
                                         </td>
-                                        <td style={tdCentered}>
-                                            <button onClick={() => handleRemoveMember(t.assignedTo)} style={removeBtn}>
-                                                🗑️ Remove
-                                            </button>
-                                        </td>
-                                    </tr>
+                                        </tr>
                                 )) : (
                                     <tr><td colSpan="3" style={noDataTd}>No members found yet.</td></tr>
                                 )}
