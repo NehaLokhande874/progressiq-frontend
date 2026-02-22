@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import API from '../api/axios';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [searchQuery, setSearchQuery] = useState(''); // ✅ New: Search sathi
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedTeam, setSelectedTeam] = useState(null); // Member Evaluation Modal sathi
 
     useEffect(() => {
         fetchAllData();
@@ -27,6 +29,31 @@ const AdminDashboard = () => {
         }
     };
 
+    // ✅ TEAM-WISE ANALYTICS LOGIC
+    const leaders = users.filter(u => u.role === 'Leader');
+    const teamAnalytics = leaders.map(leader => {
+        const teamTasks = tasks.filter(t => t.leaderEmail === leader.email);
+        const completed = teamTasks.filter(t => t.status === 'Completed').length;
+        const total = teamTasks.length;
+        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        return {
+            leaderName: leader.username,
+            leaderEmail: leader.email,
+            percentage,
+            total,
+            completed,
+            pending: total - completed,
+            tasks: teamTasks,
+            chartData: [
+                { name: 'Completed', value: completed },
+                { name: 'Pending', value: total - completed }
+            ]
+        };
+    });
+
+    const COLORS = ['#10b981', '#f59e0b']; // Green & Orange
+
     const handleResetDatabase = async () => {
         if (!window.confirm("⚠️ DANGER: Sagle tasks delete karayche aahet ka?")) return;
         try {
@@ -44,7 +71,6 @@ const AdminDashboard = () => {
         } catch (err) { alert("Error deleting user"); }
     };
 
-    // ✅ New: Filter logic for Search
     const filteredTasks = tasks.filter(t => 
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
         t.assignedTo.toLowerCase().includes(searchQuery.toLowerCase())
@@ -70,10 +96,9 @@ const AdminDashboard = () => {
                 <div style={headerStyle}>
                     <h1>Master Control Panel</h1>
                     <div style={{ display: 'flex', gap: '15px' }}>
-                        {/* ✅ New: Search Bar */}
                         <input 
                             type="text" 
-                            placeholder="Search tasks or members..." 
+                            placeholder="Search tasks..." 
                             style={searchField}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -81,17 +106,36 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* --- DASHBOARD TAB --- */}
+                {/* --- DASHBOARD TAB (With Team Charts) --- */}
                 {activeTab === 'dashboard' && (
                     <>
-                        <div style={statsGrid}>
-                            <div style={statCard}><p>Total System Tasks</p><h2>{tasks.length}</h2></div>
-                            <div style={statCard}><p>Completed</p><h2 style={{color: '#10b981'}}>{tasks.filter(t => t.status === 'Completed').length}</h2></div>
-                            <div style={statCard}><p>Active/Pending</p><h2 style={{color: '#f59e0b'}}>{tasks.filter(t => t.status !== 'Completed').length}</h2></div>
+                        <h3 style={{marginBottom: '15px'}}>Team Performance (Click cards for evaluation)</h3>
+                        <div style={teamGrid}>
+                            {teamAnalytics.map((team, index) => (
+                                <div key={index} style={teamCard} onClick={() => setSelectedTeam(team)}>
+                                    <h4 style={{margin: '0 0 10px 0'}}>{team.leaderName}</h4>
+                                    <div style={{ height: '120px' }}>
+                                        <ResponsiveContainer>
+                                            <PieChart>
+                                                <Pie data={team.chartData} innerRadius={35} outerRadius={50} paddingAngle={5} dataKey="value">
+                                                    {team.chartData.map((entry, i) => (
+                                                        <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div style={{textAlign: 'center', marginTop: '10px'}}>
+                                        <span style={{fontSize: '18px', fontWeight: 'bold', color: '#10b981'}}>{team.percentage}%</span>
+                                        <p style={{fontSize: '11px', color: '#888', margin: 0}}>Efficiency</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         <div style={cardWrapper}>
-                            <h3 style={cardTitle}>Global Task Monitor</h3>
+                            <h3 style={cardTitle}>Recent Global Activities</h3>
                             <div style={scrollArea}>
                                 {filteredTasks.map(t => (
                                     <div key={t._id} style={taskItem}>
@@ -102,7 +146,6 @@ const AdminDashboard = () => {
                                         <p style={taskMeta}>Leader: {t.leaderEmail} ➡️ Member: {t.assignedTo}</p>
                                     </div>
                                 ))}
-                                {filteredTasks.length === 0 && <p style={{textAlign: 'center', color: '#999'}}>No data found.</p>}
                             </div>
                         </div>
                     </>
@@ -112,14 +155,13 @@ const AdminDashboard = () => {
                 {activeTab === 'users' && (
                     <div style={cardWrapper}>
                         <h3 style={cardTitle}>Team Structure (Grouped)</h3>
-                        {users.filter(u => u.role === 'Leader').map(leader => (
+                        {leaders.map(leader => (
                             <div key={leader._id} style={teamBox}>
                                 <div style={teamHeader}>
                                     <strong>Leader: {leader.username} ({leader.email})</strong>
                                     <button onClick={() => handleDeleteUser(leader.email)} style={delBtn}>Remove Leader</button>
                                 </div>
                                 <div style={{paddingLeft: '15px'}}>
-                                    <small style={{color: '#888'}}>Team Members:</small>
                                     {tasks.filter(t => t.leaderEmail === leader.email).map((t, i) => (
                                         <div key={i} style={memberItem}>
                                             <span>👤 {t.assignedTo}</span>
@@ -132,28 +174,36 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* --- TASK LOGS TAB --- */}
-                {activeTab === 'logs' && (
-                    <div style={cardWrapper}>
-                        <h3 style={cardTitle}>Full System Logs</h3>
-                        <table style={tableStyle}>
-                            <thead style={{backgroundColor: '#f8f9fa'}}>
-                                <tr>
-                                    <th style={thStyle}>Task</th>
-                                    <th style={thStyle}>Assigned To</th>
-                                    <th style={thStyle}>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredTasks.map(t => (
-                                    <tr key={t._id}>
-                                        <td style={tdStyle}>{t.title}</td>
-                                        <td style={tdStyle}>{t.assignedTo}</td>
-                                        <td style={tdStyle}><span style={statusBadge(t.status)}>{t.status}</span></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                {/* --- EVALUATION MODAL (Pop-up) --- */}
+                {selectedTeam && (
+                    <div style={modalOverlay} onClick={() => setSelectedTeam(null)}>
+                        <div style={modalContent} onClick={e => e.stopPropagation()}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px'}}>
+                                <h2>Team Evaluation: {selectedTeam.leaderName}</h2>
+                                <button onClick={() => setSelectedTeam(null)} style={{cursor: 'pointer', border: 'none', background: 'none', fontSize: '20px'}}>✖</button>
+                            </div>
+                            <div style={{marginTop: '20px'}}>
+                                <p><strong>Total Team Tasks:</strong> {selectedTeam.total}</p>
+                                <table style={tableStyle}>
+                                    <thead>
+                                        <tr style={{background: '#f8f9fa'}}>
+                                            <th style={thStyle}>Member Email</th>
+                                            <th style={thStyle}>Task</th>
+                                            <th style={thStyle}>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedTeam.tasks.map((t, i) => (
+                                            <tr key={i}>
+                                                <td style={tdStyle}>{t.assignedTo}</td>
+                                                <td style={tdStyle}>{t.title}</td>
+                                                <td style={tdStyle}><span style={statusBadge(t.status)}>{t.status}</span></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -161,33 +211,35 @@ const AdminDashboard = () => {
     );
 };
 
-// --- STYLES (Properly Aligned) ---
+// --- STYLES ---
 const containerStyle = { display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#f4f7fe', overflow: 'hidden' };
 const sidebarStyle = { width: '240px', backgroundColor: '#1e1e2d', padding: '30px 20px', display: 'flex', flexDirection: 'column' };
 const navStyle = { flex: 1 };
 const navItem = { padding: '12px 15px', color: '#a2a3b7', cursor: 'pointer', marginBottom: '8px', borderRadius: '8px', transition: '0.3s' };
 const navItemActive = { ...navItem, backgroundColor: '#2b2b40', color: '#fff', fontWeight: 'bold' };
-const mainContentStyle = { flex: 1, padding: '30px', overflowY: 'auto' };
-const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' };
+const mainContentStyle = { flex: 1, padding: '30px', overflowY: 'auto', position: 'relative' };
+const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' };
 const searchField = { padding: '10px 15px', borderRadius: '8px', border: '1px solid #ddd', width: '250px' };
 const resetBtnStyle = { backgroundColor: '#ff4d4d', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
-const statsGrid = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' };
-const statCard = { backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' };
+const teamGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '20px', marginBottom: '30px' };
+const teamCard = { backgroundColor: '#fff', padding: '15px', borderRadius: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer', border: '1px solid transparent', transition: '0.3s' };
 const cardWrapper = { backgroundColor: '#fff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' };
 const cardTitle = { marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' };
-const scrollArea = { maxHeight: '450px', overflowY: 'auto' };
-const taskItem = { padding: '15px 0', borderBottom: '1px solid #f1f1f1' };
+const scrollArea = { maxHeight: '300px', overflowY: 'auto' };
+const taskItem = { padding: '12px 0', borderBottom: '1px solid #f1f1f1' };
 const taskMeta = { fontSize: '12px', color: '#777', marginTop: '5px' };
 const teamBox = { border: '1px solid #eee', borderRadius: '10px', padding: '15px', marginBottom: '15px' };
-const teamHeader = { display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #f9f9f9', paddingBottom: '5px' };
+const teamHeader = { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' };
 const memberItem = { display: 'flex', justifyContent: 'space-between', padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '5px', marginBottom: '5px', fontSize: '13px' };
-const tableStyle = { width: '100%', borderCollapse: 'collapse' };
-const thStyle = { textAlign: 'left', padding: '12px', fontSize: '14px', color: '#666' };
-const tdStyle = { padding: '12px', borderBottom: '1px solid #eee', fontSize: '14px' };
+const tableStyle = { width: '100%', borderCollapse: 'collapse', marginTop: '10px' };
+const thStyle = { textAlign: 'left', padding: '10px', fontSize: '13px', color: '#666' };
+const tdStyle = { padding: '10px', borderBottom: '1px solid #eee', fontSize: '13px' };
 const delBtn = { color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px' };
 const delBtnSmall = { ...delBtn, fontSize: '11px' };
-const statusBadge = (s) => ({ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', backgroundColor: s === 'Completed' ? '#d1fae5' : '#fef3c7', color: s === 'Completed' ? '#065f46' : '#92400e' });
+const statusBadge = (s) => ({ padding: '3px 7px', borderRadius: '5px', fontSize: '10px', fontWeight: 'bold', backgroundColor: s === 'Completed' ? '#d1fae5' : '#fef3c7', color: s === 'Completed' ? '#065f46' : '#92400e' });
 const logoutBtnSide = { backgroundColor: '#333', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', marginTop: 'auto' };
 const loaderStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 'bold' };
+const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 };
+const modalContent = { background: '#fff', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '800px', maxHeight: '80vh', overflowY: 'auto' };
 
 export default AdminDashboard;
