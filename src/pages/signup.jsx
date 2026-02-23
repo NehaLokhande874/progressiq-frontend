@@ -6,7 +6,7 @@ const Signup = () => {
     const location = useLocation();
     const query = new URLSearchParams(location.search);
     
-    // 🔗 Invite Link parameters
+    // 🔗 URL parameters parsing (Invite Link logic)
     const initialEmail = query.get('email') || '';
     const initialRole = query.get('role') || 'Member';
     const leaderEmailFromLink = query.get('leader') || '';
@@ -15,16 +15,16 @@ const Signup = () => {
         username: '', 
         email: initialEmail, 
         password: '', 
-        // Jar leader link asel tar role 'Member' lock kara, nahitar dynamic dya
+        // 🔒 Jar leader link asel tar role 'Member' lock hoto, nahitar user select karu shakto
         role: leaderEmailFromLink ? 'Member' : initialRole,
         adminSecretKey: '',
-        invitedBy: leaderEmailFromLink // Backend la mahiti denyasathi navin field
+        invitedBy: leaderEmailFromLink // ✅ Backend la connectivity denarya mhatvacha field
     });
 
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    // URL parameters badalle ki form update karne
+    // URL parameters badalle ki form state update karne
     useEffect(() => {
         setFormData(prev => ({
             ...prev,
@@ -47,7 +47,7 @@ const Signup = () => {
 
         setLoading(true);
         try {
-            // ✅ Data backend la pathvatana invitedBy (leaderEmail) include kela aahe
+            // ✅ Sagle data (invitedBy sobat) backend la pathvat aahe
             const response = await API.post('/auth/signup', formData); 
             
             if (response.status === 201 || response.status === 200) {
@@ -74,10 +74,10 @@ const Signup = () => {
             <div style={cardStyle}>
                 <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>Create New Account</h2>
                 
-                {/* 📩 Invite Info Box */}
+                {/* 📩 Invite Info Box (Fakt link varun alyavar disel) */}
                 {leaderEmailFromLink && (
                     <div style={{ backgroundColor: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#276749' }}>
-                        🎉 Joining <b>{leaderEmailFromLink}</b>'s team as a Member!
+                        🎉 Joining <b>{leaderEmailFromLink}</b>'s team!
                     </div>
                 )}
 
@@ -91,7 +91,7 @@ const Signup = () => {
                     <label style={labelStyle}>Password</label>
                     <input type="password" name="password" placeholder="Min. 6 characters" style={inputStyle} value={formData.password} onChange={handleChange} required />
                     
-                    {/* Role Selection (Fakt jar link nasel tarach dakhva) */}
+                    {/* Role Selection Logic */}
                     {!leaderEmailFromLink ? (
                         <>
                             <label style={labelStyle}>Register as:</label>
@@ -103,10 +103,12 @@ const Signup = () => {
                             </select>
                         </>
                     ) : (
-                        <input type="hidden" name="role" value="Member" />
+                        <div style={{ marginBottom: '18px', fontSize: '14px', color: '#666' }}>
+                            Role: <b>Member</b> (Locked by Invite)
+                        </div>
                     )}
 
-                    {/* ✅ Admin Secret Key Field */}
+                    {/* ✅ Admin Secret Key Field (Fakt Admin select kelyavar disel) */}
                     {formData.role === 'Admin' && (
                         <div style={{ padding: '10px', backgroundColor: '#fff5f5', borderRadius: '6px', marginBottom: '15px', border: '1px solid #feb2b2' }}>
                             <label style={{ ...labelStyle, color: '#c53030' }}>Admin Secret Key</label>

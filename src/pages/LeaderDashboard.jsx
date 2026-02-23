@@ -6,22 +6,33 @@ const LeaderDashboard = () => {
     const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, submitted: 0 });
     const [teamTasks, setTeamTasks] = useState([]);
     const [loading, setLoading] = useState(true);
-    const leaderEmail = localStorage.getItem('email');
-    const leaderName = localStorage.getItem('username');
+    
+    // ✅ User object madhun data ghene mhatvache aahe
+    const user = JSON.parse(localStorage.getItem('user'));
+    const leaderEmail = user?.email;
+    const leaderName = user?.username;
+    
     const navigate = useNavigate();
 
     useEffect(() => {
         const fetchDashboardData = async () => {
-            if (!leaderEmail) { setLoading(false); return; }
+            if (!leaderEmail) { 
+                setLoading(false); 
+                return; 
+            }
             try {
+                // ✅ Leader chya email pramane tasks fetch karne
                 const res = await API.get(`/tasks/leader/${leaderEmail}`);
                 const allTasks = res.data;
+                
                 const sortedTasks = allTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 setTeamTasks(sortedTasks);
+                
                 const total = allTasks.length;
                 const completed = allTasks.filter(t => t.status === 'Completed').length;
                 const submitted = allTasks.filter(t => t.status === 'Submitted').length;
                 const pending = total - (completed + submitted);
+                
                 setStats({ total, completed, pending, submitted });
             } catch (err) {
                 console.error("Dashboard error:", err);
@@ -34,7 +45,10 @@ const LeaderDashboard = () => {
 
     const handleEvaluation = async (taskId) => {
         try {
-            await API.put(`/tasks/add-feedback/${taskId}`, { feedback: "Verified by Leader.", status: 'Completed' });
+            await API.put(`/tasks/add-feedback/${taskId}`, { 
+                feedback: "Verified by Leader.", 
+                status: 'Completed' 
+            });
             alert("Task marked as Completed! ✅");
             window.location.reload();
         } catch (err) {
@@ -43,19 +57,24 @@ const LeaderDashboard = () => {
     };
 
     const handleRemoveMember = async (memberEmail) => {
-        if (window.confirm(`Remove ${memberEmail}?`)) {
+        if (window.confirm(`Remove all tasks for ${memberEmail}?`)) {
             try {
                 await API.delete(`/tasks/remove-member/${encodeURIComponent(memberEmail)}`);
                 setTeamTasks(prev => prev.filter(t => t.assignedTo !== memberEmail));
                 alert("🗑️ Removed!");
+                window.location.reload();
             } catch (err) {
                 alert("❌ Error removing member.");
             }
         }
     };
 
-    const handleLogout = () => { localStorage.clear(); navigate('/login'); };
+    const handleLogout = () => { 
+        localStorage.clear(); 
+        navigate('/'); 
+    };
 
+    // --- Styles ---
     const cardStyle = { padding: '25px', borderRadius: '15px', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', textAlign: 'center', flex: 1, margin: '10px', border: '1px solid #e2e8f0' };
     const tableHeader = { backgroundColor: '#f8fafc', textAlign: 'left', padding: '15px', color: '#64748b', fontSize: '13px', textTransform: 'uppercase' };
     const tableCell = { padding: '15px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', color: '#1e293b' };
@@ -69,7 +88,7 @@ const LeaderDashboard = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' }}>
                 <div>
                     <h1 style={{ margin: 0, color: '#0f172a', fontSize: '28px' }}>Leader Dashboard 🚀</h1>
-                    <p style={{ color: '#64748b', marginTop: '5px' }}>Welcome back, <b>{leaderName}</b></p>
+                    <p style={{ color: '#64748b', marginTop: '5px' }}>Welcome back, <b>{leaderName || 'Leader'}</b></p>
                     <p style={{ color: '#94a3b8', fontSize: '12px', margin: 0 }}>{leaderEmail}</p>
                 </div>
                 <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: '#fff', padding: '10px 22px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
@@ -102,8 +121,8 @@ const LeaderDashboard = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
-                                <th style={tableHeader}>Member</th>
-                                <th style={tableHeader}>Task</th>
+                                <th style={tableHeader}>Member Email</th>
+                                <th style={tableHeader}>Task Title</th>
                                 <th style={tableHeader}>Status</th>
                                 <th style={tableHeader}>Action</th>
                             </tr>
@@ -123,7 +142,7 @@ const LeaderDashboard = () => {
                                     </td>
                                 </tr>
                             )) : (
-                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No tasks assigned yet.</td></tr>
+                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No tasks found for your team.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -134,8 +153,3 @@ const LeaderDashboard = () => {
 };
 
 export default LeaderDashboard;
-```
-
-**Step 5 — Scroll down, click "Commit changes"**, write message:
-```
-fix: complete LeaderDashboard - build error fixed
