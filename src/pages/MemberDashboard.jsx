@@ -9,7 +9,7 @@ const MemberDashboard = () => {
     const [files, setFiles] = useState({}); 
     const [notes, setNotes] = useState({}); 
     
-    // ✅ Strong User Mapping
+    // ✅ Reliable User Mapping
     const user = JSON.parse(localStorage.getItem('user')) || {};
     const userEmail = user.email || localStorage.getItem('email') || localStorage.getItem('username'); 
     const displayName = user.username || (userEmail ? userEmail.split('@')[0] : "Member");
@@ -25,7 +25,7 @@ const MemberDashboard = () => {
             const memberTasks = Array.isArray(res.data) ? res.data : [];
             setTasks(memberTasks);
 
-            // 2. Team mates fetch karne (Real-time sync)
+            // 2. Team mates fetch karne (Real-time sync logic)
             if (memberTasks.length > 0) {
                 const leaderEmail = memberTasks[0].leaderEmail;
                 if (leaderEmail) {
@@ -47,7 +47,7 @@ const MemberDashboard = () => {
         fetchDashboardData();
     }, [userEmail]);
 
-    // ✅ Deadline Progress Calculation Logic
+    // ✅ Progress Bar Calculation
     const calculateProgress = (createdAt, deadline) => {
         const start = new Date(createdAt).getTime();
         const end = new Date(deadline).getTime();
@@ -60,6 +60,7 @@ const MemberDashboard = () => {
         return Math.round(progress);
     };
 
+    // ✅ Real-time Submission to Leader
     const handleSubmitWork = async (taskId) => {
         if (!files[taskId]) return alert("Please select a file first!");
         
@@ -72,8 +73,8 @@ const MemberDashboard = () => {
             await API.put(`/tasks/submit-work/${taskId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            alert("✅ Work submitted successfully!");
-            fetchDashboardData(); 
+            alert("✅ Work submitted! Leader dashboard updated.");
+            fetchDashboardData(); // Refresh to show "Under Review"
         } catch (err) {
             alert("❌ Submission failed: " + (err.response?.data?.message || "Server Error"));
         } finally {
@@ -81,161 +82,158 @@ const MemberDashboard = () => {
         }
     };
 
-    // --- Modern Styles (Professional Centered Alignment) ---
+    // --- Optimized Styles (Full Screen Utilization) ---
     const pageWrapper = { 
         display: 'flex', 
-        justifyContent: 'center', // Center Alignment Fix
-        backgroundColor: '#f8fafc', 
+        backgroundColor: '#f1f5f9', 
         minHeight: '100vh', 
-        padding: '40px 20px',
+        width: '100%',
         fontFamily: '"Inter", sans-serif'
     };
 
     const mainLayout = { 
-        width: '100%', 
-        maxWidth: '1200px', // Content restricts to professional width
         display: 'flex', 
-        gap: '30px' 
+        width: '100%', 
+        padding: '30px', 
+        gap: '25px',
+        boxSizing: 'border-box'
     };
 
-    const sidebar = { width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' };
-    const contentArea = { flex: 1 };
+    const sidebar = { 
+        width: '320px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '20px',
+        flexShrink: 0 
+    };
+
+    const contentArea = { 
+        flexGrow: 1, // Utilize purn urleli space
+        maxWidth: 'calc(100% - 345px)' 
+    };
     
-    const cardBase = { backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
-    const taskCard = { 
+    const cardBase = { backgroundColor: '#fff', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' };
+    
+    const taskCardStyle = (isCompleted, isOverdue) => ({
         backgroundColor: '#fff', 
-        padding: '25px', 
+        padding: '30px', 
         borderRadius: '20px', 
         marginBottom: '25px', 
-        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)', 
-        border: '1px solid #f1f5f9',
-        position: 'relative'
-    };
-
-    const progressBarContainer = { width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '10px', overflow: 'hidden', marginTop: '10px' };
-    
-    const submitBtnStyle = (isUploading) => ({
-        backgroundColor: isUploading ? '#94a3b8' : '#2563eb',
-        color: '#fff',
-        border: 'none',
-        padding: '12px 20px',
-        borderRadius: '10px',
-        cursor: isUploading ? 'not-allowed' : 'pointer',
-        fontWeight: 'bold',
-        fontSize: '14px',
-        transition: '0.3s'
+        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', 
+        borderLeft: isCompleted ? '10px solid #10b981' : isOverdue ? '10px solid #ef4444' : '10px solid #2563eb',
+        position: 'relative',
+        transition: 'transform 0.2s'
     });
+
+    const progressBarContainer = { width: '100%', height: '10px', backgroundColor: '#e2e8f0', borderRadius: '10px', overflow: 'hidden', marginTop: '10px' };
 
     return (
         <div style={pageWrapper}>
             <div style={mainLayout}>
                 
-                {/* 🛡️ Left Sidebar (Info & Team) */}
+                {/* 🛡️ Sidebar (Utilization 25%) */}
                 <div style={sidebar}>
                     <div style={cardBase}>
                         <h3 style={{margin: '0 0 10px 0', fontSize: '18px', color: '#1e293b'}}>🚀 My Status</h3>
-                        <p style={{fontSize: '14px', color: '#64748b', margin: '5px 0'}}><b>Tasks Assigned:</b> {tasks.length}</p>
-                        <p style={{fontSize: '12px', color: '#94a3b8'}}>Leader: {tasks.length > 0 ? tasks[0].leaderEmail : "N/A"}</p>
+                        <p style={{fontSize: '14px', color: '#64748b'}}><b>Tasks Assigned:</b> {tasks.length}</p>
+                        <p style={{fontSize: '12px', color: '#94a3b8'}}>Leader: {tasks.length > 0 ? tasks[0].leaderEmail : "Not Assigned"}</p>
                     </div>
 
                     <div style={cardBase}>
                         <h3 style={{margin: '0 0 15px 0', fontSize: '18px', color: '#1e293b'}}>👥 Team Mates</h3>
                         {teamMates.length > 0 ? teamMates.map((mate, idx) => (
                             <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid #f8fafc'}}>
-                                <div style={{width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold'}}>{mate[0].toUpperCase()}</div>
-                                <span style={{fontSize: '13px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{mate}</span>
+                                <div style={{width: '35px', height: '35px', borderRadius: '50%', backgroundColor: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold'}}>{mate[0].toUpperCase()}</div>
+                                <span style={{fontSize: '13px', color: '#475569'}}>{mate}</span>
                             </div>
-                        )) : <p style={{fontSize: '12px', color: '#94a3b8'}}>Working Solo ⚡</p>}
+                        )) : <p style={{fontSize: '12px', color: '#94a3b8'}}>Solo Mission ⚡</p>}
                     </div>
                 </div>
 
-                {/* 📝 Main Dashboard Area */}
+                {/* 📝 Main Dashboard (Utilization 75%) */}
                 <div style={contentArea}>
-                    <div style={{marginBottom: '30px'}}>
-                        <h2 style={{margin: 0, color: '#0f172a'}}>Welcome, {displayName}! 👋</h2>
-                        <p style={{color: '#64748b', margin: '5px 0'}}>Here is your real-time task progress.</p>
+                    <div style={{marginBottom: '35px'}}>
+                        <h1 style={{margin: 0, color: '#0f172a', fontSize: '32px'}}>Hello, {displayName}! 👋</h1>
+                        <p style={{color: '#64748b', fontSize: '16px'}}>Manage your deadlines and submissions here.</p>
                     </div>
 
-                    {loading ? <div style={{textAlign: 'center', padding: '50px'}}>🔄 Syncing with Server...</div> : (
+                    {loading ? <div style={{textAlign: 'center', padding: '50px', fontSize: '18px'}}>🔄 Syncing tasks...</div> : (
                         tasks.length > 0 ? tasks.map(task => {
                             const progress = calculateProgress(task.createdAt, task.deadline);
                             const isOverdue = progress === 100 && task.status !== 'Completed';
                             const isCompleted = task.status === 'Completed' || task.status === 'Done';
 
                             return (
-                                <div key={task._id} style={{
-                                    ...taskCard,
-                                    borderLeft: isCompleted ? '8px solid #10b981' : isOverdue ? '8px solid #ef4444' : '8px solid #2563eb'
-                                }}>
-                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                                <div key={task._id} style={taskCardStyle(isCompleted, isOverdue)}>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                         <div>
-                                            <h4 style={{margin: 0, fontSize: '20px', color: '#1e293b'}}>{task.title}</h4>
-                                            <p style={{fontSize: '12px', color: isOverdue ? '#ef4444' : '#64748b', margin: '5px 0', fontWeight: '600'}}>
+                                            <h2 style={{margin: 0, fontSize: '24px', color: '#1e293b'}}>{task.title}</h2>
+                                            <p style={{fontSize: '13px', color: isOverdue ? '#ef4444' : '#64748b', fontWeight: '700', marginTop: '5px'}}>
                                                 📅 DEADLINE: {new Date(task.deadline).toLocaleDateString()}
                                             </p>
                                         </div>
                                         <span style={{
-                                            padding: '5px 15px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
+                                            padding: '8px 18px', borderRadius: '25px', fontSize: '12px', fontWeight: 'bold',
                                             backgroundColor: isCompleted ? '#dcfce7' : '#e0f2fe',
-                                            color: isCompleted ? '#166534' : '#0369a1'
+                                            color: isCompleted ? '#166534' : '#0369a1',
+                                            textTransform: 'uppercase'
                                         }}>{task.status}</span>
                                     </div>
 
-                                    {/* 📊 Progress Bar Feature */}
-                                    <div style={{margin: '20px 0'}}>
-                                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginBottom: '5px'}}>
-                                            <span>Time Elapsed</span>
-                                            <span>{progress}%</span>
+                                    {/* 📊 Progress Bar */}
+                                    <div style={{margin: '25px 0'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#64748b', marginBottom: '8px'}}>
+                                            <span>Deadline Progress</span>
+                                            <span style={{fontWeight: 'bold'}}>{progress}%</span>
                                         </div>
                                         <div style={progressBarContainer}>
                                             <div style={{
                                                 width: `${progress}%`, height: '100%', 
-                                                backgroundColor: isOverdue ? '#ef4444' : progress > 80 ? '#f59e0b' : '#10b981',
-                                                transition: 'width 0.5s ease-in-out'
+                                                backgroundColor: isOverdue ? '#ef4444' : progress > 85 ? '#f59e0b' : '#10b981',
+                                                transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
                                             }}></div>
                                         </div>
                                     </div>
 
-                                    <p style={{fontSize: '14px', color: '#475569', lineHeight: '1.6'}}>{task.description}</p>
+                                    <p style={{fontSize: '15px', color: '#475569', lineHeight: '1.7', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px'}}>{task.description}</p>
 
-                                    {/* 💬 Leader Feedback Section */}
-                                    {task.feedback && (
-                                        <div style={{marginTop: '15px', padding: '12px', backgroundColor: '#f0f9ff', borderRadius: '10px', borderLeft: '4px solid #0369a1'}}>
-                                            <small style={{color: '#0369a1'}}><b>Leader's Note:</b> {task.feedback}</small>
-                                        </div>
-                                    )}
-
-                                    {/* 📤 Submission Area */}
+                                    {/* 📤 Submission Section */}
                                     {task.status === 'Active' || task.status === 'Pending' ? (
-                                        <div style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px', borderTop: '1px solid #f1f5f9', paddingTop: '20px'}}>
-                                            <input 
-                                                type="text" 
-                                                placeholder="Link or Note for leader..." 
-                                                style={{padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}}
-                                                onChange={(e) => setNotes({...notes, [task._id]: e.target.value})}
-                                            />
-                                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                                <input type="file" onChange={(e) => setFiles({...files, [task._id]: e.target.files[0]})} style={{fontSize: '12px'}} />
+                                        <div style={{marginTop: '25px', borderTop: '2px dashed #f1f5f9', paddingTop: '20px'}}>
+                                            <div style={{display: 'flex', gap: '15px', marginBottom: '15px'}}>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Add a note or link for your leader..." 
+                                                    style={{flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1'}}
+                                                    onChange={(e) => setNotes({...notes, [task._id]: e.target.value})}
+                                                />
+                                            </div>
+                                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '12px'}}>
+                                                <input type="file" onChange={(e) => setFiles({...files, [task._id]: e.target.files[0]})} />
                                                 <button 
                                                     onClick={() => handleSubmitWork(task._id)}
                                                     disabled={uploadingId === task._id}
-                                                    style={submitBtnStyle(uploadingId === task._id)}
+                                                    style={{
+                                                        backgroundColor: uploadingId === task._id ? '#94a3b8' : '#2563eb',
+                                                        color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '10px',
+                                                        cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
+                                                    }}
                                                 >
-                                                    {uploadingId === task._id ? 'Uploading...' : 'Submit Work'}
+                                                    {uploadingId === task._id ? '🚀 Submitting...' : 'Submit Work'}
                                                 </button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div style={{marginTop: '20px', textAlign: 'center', padding: '12px', backgroundColor: '#f0fdf4', borderRadius: '10px', color: '#166534', fontWeight: 'bold'}}>
-                                            {isCompleted ? '🎉 Task Completed' : '⏳ Under Review'}
+                                        <div style={{marginTop: '25px', textAlign: 'center', padding: '18px', backgroundColor: isCompleted ? '#ecfdf5' : '#fff9eb', borderRadius: '12px', color: isCompleted ? '#065f46' : '#92400e', fontWeight: 'bold', border: '1px solid currentColor'}}>
+                                            {isCompleted ? '✅ Task Verified & Completed' : '⏳ Submission Received - Waiting for Leader Review'}
                                         </div>
                                     )}
                                 </div>
                             )
                         }) : (
-                            <div style={{textAlign: 'center', padding: '100px', backgroundColor: '#fff', borderRadius: '20px', border: '2px dashed #e2e8f0'}}>
-                                <h3>No Tasks Assigned Yet 😴</h3>
-                                <p>Relax! When your leader assigns a task, it will appear here in real-time.</p>
+                            <div style={{textAlign: 'center', padding: '100px', backgroundColor: '#fff', borderRadius: '25px', border: '3px dashed #e2e8f0'}}>
+                                <h2 style={{color: '#94a3b8'}}>No Active Tasks 🎈</h2>
+                                <p style={{color: '#cbd5e1'}}>When the leader assigns something, it will appear here in real-time.</p>
                             </div>
                         )
                     )}
