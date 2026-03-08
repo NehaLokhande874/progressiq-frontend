@@ -1,31 +1,35 @@
 import axios from 'axios';
 
+// ✅ Vite uses import.meta.env, NOT process.env
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://progressiq-backend.onrender.com/api';
+
 const API = axios.create({
-    // This will prioritize the Vercel Environment Variable, or fall back to your Render URL
-    baseURL: process.env.REACT_APP_API_URL || 'https://progressiq-backend.onrender.com/api', 
+    baseURL: BASE_URL,
     timeout: 60000,
     headers: {
-        "Content-Type": "application/json"
+        'Content-Type': 'application/json',
     },
-    withCredentials: true
+    withCredentials: true,
 });
 
-// Request interceptor for token
-API.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    console.log(`Sending Request to: ${config.baseURL}${config.url}`);
-    return config;
-}, (error) => Promise.reject(error));
+// ── Request interceptor: attach JWT token ──
+API.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-// Response interceptor
+// ── Response interceptor: handle errors globally ──
 API.interceptors.response.use(
     (response) => response,
-    async (error) => {
+    (error) => {
         if (!error.response) {
-            console.error("Network Error: Check if Render backend is Live or sleeping.");
+            console.error('Network Error: Render backend may be sleeping (cold start).');
         }
         if (error.response?.status === 401) {
             localStorage.clear();

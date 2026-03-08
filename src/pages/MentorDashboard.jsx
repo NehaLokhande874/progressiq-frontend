@@ -1,146 +1,238 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import Sidebar from '../components/Sidebar';
+
+const STATUS_COLORS = {
+    completed: { bg: 'rgba(16,185,129,0.12)', color: '#34d399' },
+    pending:   { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
+    submitted: { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc' },
+    revision:  { bg: 'rgba(239,68,68,0.12)',  color: '#f87171' },
+};
 
 const MentorDashboard = () => {
     const [groupedTasks, setGroupedTasks] = useState({});
-    const [loading, setLoading] = useState(true);
-    const username = localStorage.getItem('username') || "Mentor";
+    const [loading,      setLoading]      = useState(true);
+    const [error,        setError]        = useState('');
+    const [feedback,     setFeedback]     = useState({});
+    const [sending,      setSending]      = useState({});
     const navigate = useNavigate();
+    const username = localStorage.getItem('username') || 'Mentor';
 
-    useEffect(() => {
-        const fetchAllData = async () => {
-            try {
-                setLoading(true);
-                // 1. Backend kadun sarv tasks ghene
-                const res = await API.get('/tasks/all'); 
-                const allTasks = Array.isArray(res.data) ? res.data : [];
-
-                // 2. Tasks na Leader nusar group karne
-                const groups = allTasks.reduce((acc, task) => {
-                    const leader = task.leaderEmail || "General Projects";
-                    if (!acc[leader]) acc[leader] = [];
-                    acc[leader].push(task);
-                    return acc;
-                }, {});
-
-                setGroupedTasks(groups);
-            } catch (err) {
-                console.error("Data fetch error:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchAllData();
-    }, []);
-
-    const handleLogout = () => {
-        localStorage.clear();
-        navigate('/');
+    const fetchTasks = async () => {
+        try {
+            const { data } = await API.get('/mentor/tasks');
+            const grouped = data.reduce((acc, task) => {
+                const key = task.assignedTo?.email || 'Unknown';
+                if (!acc[key]) acc[key] = { member: task.assignedTo, tasks: [] };
+                acc[key].tasks.push(task);
+                return acc;
+            }, {});
+            setGroupedTasks(grouped);
+        } catch {
+            setError('Failed to load tasks.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // --- 📏 Premium Middle Alignment Styles ---
-    const pageWrapper = {
-        backgroundColor: '#f1f5f9',
-        minHeight: '100vh',
-        width: '100vw',
-        margin: 0,
-        padding: '40px 0',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center', // 🎯 Horizontal Center
-        fontFamily: '"Plus Jakarta Sans", sans-serif',
-        boxSizing: 'border-box'
+    useEffect(() => { fetchTasks(); }, []);
+
+    const handleFeedbackChange = (taskId, value) =>
+        setFeedback(prev => ({ ...prev, [taskId]: value }));
+
+    const submitFeedback = async (taskId) => {
+        if (!feedback[taskId]?.trim()) return;
+        setSending(prev => ({ ...prev, [taskId]: true }));
+        try {
+            await API.post(`/mentor/feedback/${taskId}`, { feedback: feedback[taskId] });
+            setFeedback(prev => ({ ...prev, [taskId]: '' }));
+            await fetchTasks();
+        } catch {
+            setError('Failed to send feedback.');
+        } finally {
+            setSending(prev => ({ ...prev, [taskId]: false }));
+        }
     };
 
-    const contentBox = {
-        width: '90%',
-        maxWidth: '1200px', // Screen chya madhe data bind karnyaasathi
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '30px'
-    };
+    if (loading) return (
+        <div className="loading-screen"><div className="spinner" /></div>
+    );
 
-    const groupCard = {
-        backgroundColor: '#fff',
-        borderRadius: '28px',
-        padding: '30px',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-        border: '1px solid #e2e8f0'
-    };
-
-    const statusBadge = (s) => {
-        const colors = {
-            'Completed': { bg: '#dcfce7', text: '#166534' },
-            'Submitted': { bg: '#e0f2fe', text: '#0369a1' },
-            'Active': { bg: '#fff7ed', text: '#9a3412' }
-        };
-        const style = colors[s] || { bg: '#f1f5f9', text: '#475569' };
-        return { padding: '8px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '800', backgroundColor: style.bg, color: style.text };
-    };
-
-    if (loading) return <div style={pageWrapper}>🔄 Syncing Global Progress...</div>;
+    const totalMembers = Object.keys(groupedTasks).length;
+    const allTasks     = Object.values(groupedTasks).flatMap(g => g.tasks);
+    const submitted    = allTasks.filter(t => t.status === 'submitted').length;
+    const completed    = allTasks.filter(t => t.status === 'completed').length;
 
     return (
-        <div style={pageWrapper}>
-            <div style={contentBox}>
-                
-                {/* 🎓 Header Section */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '30px 40px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+        <div className="page-shell">
+            <Sidebar active="Dashboard" />
+            <main className="main-content">
+
+                {/* Header */}
+                <div className="page-header">
                     <div>
-                        <h1 style={{ margin: 0, color: '#0f172a', fontSize: '32px', fontWeight: '800' }}>Mentor Dashboard 🎓</h1>
-                        <p style={{ color: '#64748b', margin: '5px 0 0 0', fontSize: '18px' }}>Tracking All Project Groups | Prof. {username}</p>
+                        <h1 className="page-title">Mentor Dashboard</h1>
+                        <p className="page-subtitle">
+                            Welcome back, {username} · Review member work and give feedback
+                        </p>
                     </div>
-                    <button onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '15px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
                 </div>
 
-                {/* 📂 Leader-wise Grouping */}
-                {Object.keys(groupedTasks).length > 0 ? Object.keys(groupedTasks).map((leader) => (
-                    <div key={leader} style={groupCard}>
-                        {/* Leader Info Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', paddingBottom: '15px', borderBottom: '2px solid #f8fafc' }}>
-                            <div style={{ background: '#2563eb', color: '#fff', padding: '10px', borderRadius: '12px', fontWeight: 'bold' }}>🛡️</div>
-                            <h2 style={{ margin: 0, fontSize: '20px', color: '#1e293b' }}>
-                                Team Leader: <span style={{ color: '#2563eb' }}>{leader}</span>
-                            </h2>
-                        </div>
+                {error && (
+                    <div className="alert alert-error"><span>⚠</span> {error}</div>
+                )}
 
-                        {/* Tasks Table */}
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px' }}>
-                                <thead>
-                                    <tr style={{ textAlign: 'left', color: '#94a3b8', fontSize: '13px', textTransform: 'uppercase' }}>
-                                        <th style={{ padding: '0 20px' }}>Task</th>
-                                        <th style={{ padding: '0 20px' }}>Assigned Member</th>
-                                        <th style={{ padding: '0 20px' }}>Current Status</th>
-                                        <th style={{ padding: '0 20px', textAlign: 'right' }}>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {groupedTasks[leader].map((task) => (
-                                        <tr key={task._id} style={{ backgroundColor: '#f8fafc' }}>
-                                            <td style={{ padding: '20px', borderRadius: '15px 0 0 15px', fontWeight: '600' }}>{task.title}</td>
-                                            <td style={{ padding: '20px', color: '#475569' }}>{task.assignedTo}</td>
-                                            <td style={{ padding: '20px' }}><span style={statusBadge(task.status)}>{task.status}</span></td>
-                                            <td style={{ padding: '20px', textAlign: 'right', borderRadius: '0 15px 15px 0' }}>
-                                                {/* 💡 Analyze Button - Navigates to Charts and Guidance */}
-                                                <button 
-                                                    onClick={() => navigate(`/member-details/${task.assignedTo}`)}
-                                                    style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
-                                                >
-                                                    Review & Guide 💡
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                {/* Stats */}
+                <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
+                    {[
+                        { icon: '👥', label: 'Members',         value: totalMembers,    color: 'purple' },
+                        { icon: '📋', label: 'Total Tasks',     value: allTasks.length, color: 'blue'   },
+                        { icon: '📤', label: 'Awaiting Review', value: submitted,       color: 'yellow' },
+                        { icon: '✅', label: 'Completed',       value: completed,       color: 'green'  },
+                    ].map(s => (
+                        <div className="stat-card" key={s.label}>
+                            <div className={`stat-icon ${s.color}`}>{s.icon}</div>
+                            <div>
+                                <div className="stat-value">{s.value}</div>
+                                <div className="stat-label">{s.label}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Grouped by member */}
+                {Object.keys(groupedTasks).length === 0 ? (
+                    <div className="card">
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📋</div>
+                            <div className="empty-state-title">No tasks to review</div>
+                            <div className="empty-state-body">
+                                Tasks assigned to your mentees will appear here
+                            </div>
                         </div>
                     </div>
-                )) : (
-                    <div style={{ ...groupCard, textAlign: 'center', color: '#64748b' }}>No projects available for monitoring.</div>
-                )}
-            </div>
+                ) : Object.entries(groupedTasks).map(([email, { member, tasks }]) => (
+                    <div className="card" key={email} style={{ marginBottom: '1.2rem' }}>
+
+                        {/* Member header */}
+                        <div className="card-header">
+                            <div className="flex-row">
+                                <div className="avatar">
+                                    {(member?.name || email).slice(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div className="card-title">{member?.name || email}</div>
+                                    <div className="card-subtitle">{email} · {tasks.length} task(s)</div>
+                                </div>
+                            </div>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => navigate(`/member-details/${email}`)}
+                            >
+                                View Profile →
+                            </button>
+                        </div>
+
+                        {/* Tasks */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {tasks.map(task => {
+                                const sc = STATUS_COLORS[task.status] || STATUS_COLORS.pending;
+                                return (
+                                    <div key={task._id} style={{
+                                        background: 'var(--surface-2)',
+                                        borderRadius: 10,
+                                        padding: '1rem 1.2rem',
+                                        border: '1px solid var(--border)',
+                                    }}>
+                                        {/* Task title + status */}
+                                        <div className="flex-between" style={{ marginBottom: '0.6rem' }}>
+                                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                                                {task.title}
+                                            </span>
+                                            <span className="badge" style={{
+                                                background: sc.bg,
+                                                color: sc.color
+                                            }}>
+                                                {task.status || 'pending'}
+                                            </span>
+                                        </div>
+
+                                        {/* Deadline */}
+                                        {task.deadline && (
+                                            <p style={{
+                                                fontSize: '0.75rem',
+                                                color: 'var(--text-muted)',
+                                                marginBottom: '0.5rem'
+                                            }}>
+                                                📅 Due: {new Date(task.deadline).toLocaleDateString()}
+                                            </p>
+                                        )}
+
+                                        {/* Progress note from member */}
+                                        {task.progressNote && (
+                                            <div style={{
+                                                background: 'var(--surface-3)',
+                                                borderRadius: 6,
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                color: 'var(--text-muted)',
+                                                marginBottom: '0.75rem',
+                                                borderLeft: '3px solid var(--primary)',
+                                            }}>
+                                                <strong style={{ color: 'var(--text)' }}>
+                                                    Progress note:
+                                                </strong>{' '}
+                                                {task.progressNote}
+                                            </div>
+                                        )}
+
+                                        {/* Feedback input — only for submitted tasks */}
+                                        {task.status === 'submitted' && (
+                                            <div style={{ marginTop: '0.75rem' }}>
+                                                <textarea
+                                                    className="form-textarea"
+                                                    placeholder="Write feedback for this task…"
+                                                    value={feedback[task._id] || ''}
+                                                    onChange={e => handleFeedbackChange(task._id, e.target.value)}
+                                                    style={{ minHeight: 70, marginBottom: '0.5rem' }}
+                                                />
+                                                <button
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => submitFeedback(task._id)}
+                                                    disabled={
+                                                        sending[task._id] ||
+                                                        !feedback[task._id]?.trim()
+                                                    }
+                                                >
+                                                    {sending[task._id] ? 'Sending…' : 'Send Feedback'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Existing feedback */}
+                                        {task.feedback && (
+                                            <div style={{
+                                                background: 'rgba(16,185,129,0.08)',
+                                                borderRadius: 6,
+                                                padding: '0.5rem 0.75rem',
+                                                fontSize: '0.8rem',
+                                                color: '#34d399',
+                                                marginTop: '0.5rem',
+                                                borderLeft: '3px solid #10b981',
+                                            }}>
+                                                <strong>Your feedback:</strong>{' '}
+                                                {task.feedback}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+
+            </main>
         </div>
     );
 };

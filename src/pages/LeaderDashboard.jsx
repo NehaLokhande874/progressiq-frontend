@@ -1,199 +1,234 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import API from '../api/axios';
+import Sidebar from '../components/Sidebar';
+
+const STATUS_COLORS = {
+    completed: '#10b981',
+    pending:   '#f59e0b',
+    submitted: '#6366f1',
+    revision:  '#ef4444',
+};
 
 const LeaderDashboard = () => {
-    const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, submitted: 0 });
+    const [stats,     setStats]     = useState({ total: 0, completed: 0, pending: 0, submitted: 0 });
     const [teamTasks, setTeamTasks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    
-    const user = JSON.parse(localStorage.getItem('user')) || {};
-    const leaderEmail = user.email || localStorage.getItem('email');
-    const leaderName = user.username || (leaderEmail ? leaderEmail.split('@')[0] : "Leader");
-    
+    const [members,   setMembers]   = useState([]);
+    const [loading,   setLoading]   = useState(true);
+    const [error,     setError]     = useState('');
     const navigate = useNavigate();
 
-    const fetchDashboardData = async () => {
-        if (!leaderEmail) { setLoading(false); return; }
-        try {
-            const res = await API.get(`/tasks/leader/${leaderEmail}`);
-            const allTasks = Array.isArray(res.data) ? res.data : [];
-            setTeamTasks(allTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-
-            const total = allTasks.length;
-            const completed = allTasks.filter(t => t.status === 'Completed' || t.status === 'Done').length;
-            const submitted = allTasks.filter(t => t.status === 'Submitted').length;
-            const pending = allTasks.filter(t => t.status === 'Active' || t.status === 'Pending').length;
-            
-            setStats({ total, completed, pending, submitted });
-        } catch (err) {
-            console.error("Fetch Error:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchDashboardData();
-    }, [leaderEmail]);
-
-    const handleEvaluation = async (taskId) => {
-        try {
-            await API.put(`/tasks/add-feedback/${taskId}`, { 
-                feedback: "Verified and Approved by Leader.", 
-                status: 'Completed' 
-            });
-            alert("Task marked as Completed! ✅");
-            fetchDashboardData();
-        } catch (err) { console.error("Error:", err); }
-    };
-
-    const handleRemoveMember = async (memberEmail) => {
-        if (window.confirm(`Remove tasks for ${memberEmail}?`)) {
+        const fetchAll = async () => {
             try {
-                await API.delete(`/tasks/remove-member/${encodeURIComponent(memberEmail)}`);
-                fetchDashboardData();
-            } catch (err) { alert("Error removing."); }
-        }
-    };
-
-    // --- 📏 Premium Alignment Styles ---
-    const pageWrapper = { 
-        backgroundColor: '#f8fafc', 
-        minHeight: '100vh', 
-        width: '100vw',        
-        margin: '0', 
-        padding: '40px 0',     // Top/Bottom padding
-        boxSizing: 'border-box',
-        fontFamily: '"Plus Jakarta Sans", sans-serif',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',  // Centers everything horizontally
-        overflowX: 'hidden'
-    };
-
-    const contentBox = {
-        width: '90%',          // Desktop var 90% space vaprel
-        maxWidth: '1400px',    // Mothya screen var size limit karel
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '30px'
-    };
-
-    const headerArea = { 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        backgroundColor: '#fff',
-        padding: '30px 45px',
-        borderRadius: '28px',
-        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)',
-        border: '1px solid #e2e8f0'
-    };
-
-    const statsGrid = { 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-        gap: '25px', 
-        width: '100%'
-    };
-
-    const statCard = (color) => ({ 
-        padding: '35px', 
-        borderRadius: '28px', 
-        backgroundColor: '#fff', 
-        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', 
-        borderTop: `10px solid ${color}`, // Top border looks cleaner for cards
-        textAlign: 'left',
-        transition: 'transform 0.2s'
-    });
-
-    const tableContainer = { 
-        backgroundColor: '#fff', 
-        padding: '40px', 
-        borderRadius: '32px', 
-        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)',
-        width: '100%',
-        boxSizing: 'border-box',
-        border: '1px solid #e2e8f0'
-    };
-
-    const statusBadge = (s) => {
-        const colors = {
-            'Completed': { bg: '#dcfce7', text: '#166534' },
-            'Submitted': { bg: '#e0f2fe', text: '#0369a1' },
-            'Active': { bg: '#fff7ed', text: '#9a3412' }
+                const [sRes, tRes, mRes] = await Promise.all([
+                    API.get('/leader/stats'),
+                    API.get('/leader/team-tasks'),
+                    API.get('/leader/members'),
+                ]);
+                setStats(sRes.data);
+                setTeamTasks(tRes.data);
+                setMembers(mRes.data);
+            } catch (err) {
+                setError('Failed to load dashboard data.');
+            } finally {
+                setLoading(false);
+            }
         };
-        const style = colors[s] || { bg: '#f1f5f9', text: '#475569' };
-        return { padding: '10px 20px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', backgroundColor: style.bg, color: style.text, textTransform: 'uppercase' };
-    };
+        fetchAll();
+    }, []);
+
+    if (loading) return (
+        <div className="loading-screen">
+            <div className="spinner" />
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading…</span>
+        </div>
+    );
+
+    const pieData = [
+        { name: 'Completed', value: stats.completed },
+        { name: 'Pending',   value: stats.pending   },
+        { name: 'Submitted', value: stats.submitted  },
+    ].filter(d => d.value > 0);
+
+    const completionRate = stats.total
+        ? Math.round((stats.completed / stats.total) * 100) : 0;
 
     return (
-        <div style={pageWrapper}>
-            <div style={contentBox}>
-                
-                {/* 🏷️ Header Section */}
-                <div style={headerArea}>
+        <div className="page-shell">
+            <Sidebar active="Dashboard" />
+            <main className="main-content">
+
+                {/* Header */}
+                <div className="page-header">
                     <div>
-                        <h1 style={{ margin: 0, color: '#0f172a', fontSize: '38px', fontWeight: '800', letterSpacing: '-1px' }}>Leader Console ⚡</h1>
-                        <p style={{ color: '#64748b', fontSize: '18px', marginTop: '8px' }}>Tracking team performance for <b>{leaderName}</b></p>
+                        <h1 className="page-title">Leader Dashboard</h1>
+                        <p className="page-subtitle">Team performance overview</p>
                     </div>
-                    <div style={{ display: 'flex', gap: '20px' }}>
-                        <button onClick={() => navigate('/leader-tasks')} style={{ background: '#2563eb', color: 'white', padding: '16px 32px', border: 'none', borderRadius: '18px', cursor: 'pointer', fontWeight: '800', fontSize: '15px', boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.3)' }}>+ New Assignment</button>
-                        <button onClick={() => { localStorage.clear(); navigate('/'); }} style={{ background: '#fff', color: '#ef4444', border: '2px solid #fee2e2', padding: '14px 28px', borderRadius: '18px', cursor: 'pointer', fontWeight: '700' }}>Logout</button>
-                    </div>
+                    <button className="btn btn-primary" onClick={() => navigate('/leader-tasks')}>
+                        + Manage Tasks
+                    </button>
                 </div>
 
-                {/* 📊 High-Level Stats */}
-                <div style={statsGrid}>
-                    <div style={statCard('#3b82f6')}><p style={{ color: '#64748b', fontWeight: '700', fontSize: '15px' }}>TOTAL PROJECTS</p><h2 style={{ fontSize: '42px', margin: '10px 0 0 0', color: '#1e293b' }}>{stats.total}</h2></div>
-                    <div style={statCard('#f59e0b')}><p style={{ color: '#64748b', fontWeight: '700', fontSize: '15px' }}>PENDING TASKS</p><h2 style={{ fontSize: '42px', margin: '10px 0 0 0', color: '#1e293b' }}>{stats.pending}</h2></div>
-                    <div style={statCard('#0ea5e9')}><p style={{ color: '#64748b', fontWeight: '700', fontSize: '15px' }}>NEEDS REVIEW</p><h2 style={{ fontSize: '42px', margin: '10px 0 0 0', color: '#1e293b' }}>{stats.submitted}</h2></div>
-                    <div style={statCard('#10b981')}><p style={{ color: '#64748b', fontWeight: '700', fontSize: '15px' }}>TEAM EFFICIENCY</p><h2 style={{ fontSize: '42px', margin: '10px 0 0 0', color: '#10b981' }}>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</h2></div>
-                </div>
+                {error && (
+                    <div className="alert alert-error"><span>⚠</span> {error}</div>
+                )}
 
-                {/* 📑 Data Table Section */}
-                <div style={tableContainer}>
-                    <h3 style={{ marginBottom: '35px', color: '#0f172a', fontSize: '26px', fontWeight: '800' }}>👥 Team Activity Feed</h3>
-                    {loading ? <div style={{ textAlign: 'center', padding: '40px', fontSize: '20px', color: '#64748b' }}>🔄 Syncing database...</div> : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 15px' }}>
-                                <thead>
-                                    <tr style={{ textAlign: 'left', color: '#94a3b8', fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        <th style={{ padding: '0 25px' }}>Member</th>
-                                        <th style={{ padding: '0 25px' }}>Task Details</th>
-                                        <th style={{ padding: '0 25px' }}>Current Status</th>
-                                        <th style={{ padding: '0 25px', textAlign: 'center' }}>Management</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {teamTasks.length > 0 ? teamTasks.map((task) => (
-                                        <tr key={task._id} style={{ backgroundColor: '#fff', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                                            <td style={{ padding: '25px', borderRadius: '20px 0 0 20px', fontWeight: '700', color: '#334155' }}>
-                                                {task.assignedTo}
-                                                <div style={{ fontWeight: '400', fontSize: '12px', color: '#94a3b8' }}>Assigned: {new Date(task.createdAt).toLocaleDateString()}</div>
-                                            </td>
-                                            <td style={{ padding: '25px', color: '#475569', fontWeight: '600' }}>{task.title}</td>
-                                            <td style={{ padding: '25px' }}><span style={statusBadge(task.status)}>{task.status}</span></td>
-                                            <td style={{ padding: '25px', textAlign: 'center', borderRadius: '0 20px 20px 0' }}>
-                                                <button onClick={() => navigate(`/member-details/${task.assignedTo}`)} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px 24px', borderRadius: '14px', marginRight: '12px', cursor: 'pointer', fontWeight: '700', color: '#475569' }}>Review</button>
-                                                {task.status === 'Submitted' && (
-                                                    <button onClick={() => handleEvaluation(task._id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '14px', marginRight: '12px', cursor: 'pointer', fontWeight: '800' }}>Approve</button>
-                                                )}
-                                                <button onClick={() => handleRemoveMember(task.assignedTo)} style={{ background: 'none', color: '#ef4444', border: 'none', cursor: 'pointer', fontSize: '22px', verticalAlign: 'middle' }}>🗑️</button>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan="4" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8', fontSize: '18px' }}>No tasks found in the pipeline.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                {/* Stats */}
+                <div className="stats-grid">
+                    {[
+                        { icon: '📋', label: 'Total Tasks',     value: stats.total,          color: 'blue'   },
+                        { icon: '✅', label: 'Completed',       value: stats.completed,      color: 'green'  },
+                        { icon: '⏳', label: 'Pending',         value: stats.pending,        color: 'yellow' },
+                        { icon: '📤', label: 'Submitted',       value: stats.submitted,      color: 'purple' },
+                        { icon: '📈', label: 'Completion Rate', value: `${completionRate}%`, color: 'cyan'   },
+                    ].map(s => (
+                        <div className="stat-card" key={s.label}>
+                            <div className={`stat-icon ${s.color}`}>{s.icon}</div>
+                            <div>
+                                <div className="stat-value">{s.value}</div>
+                                <div className="stat-label">{s.label}</div>
+                            </div>
                         </div>
-                    )}
+                    ))}
                 </div>
-            </div>
+
+                <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
+
+                    {/* Pie chart */}
+                    <div className="card">
+                        <div className="card-header">
+                            <div className="card-title">Task Status Distribution</div>
+                        </div>
+                        <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                                <Pie
+                                    data={pieData} cx="50%" cy="50%"
+                                    innerRadius={55} outerRadius={85}
+                                    paddingAngle={3} dataKey="value"
+                                >
+                                    {pieData.map((_, i) => (
+                                        <Cell
+                                            key={i}
+                                            fill={Object.values(STATUS_COLORS)[i] || '#6366f1'}
+                                            stroke="transparent"
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={{
+                                    background: 'var(--surface-2)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 8, fontSize: 12
+                                }} />
+                                <Legend iconType="circle" iconSize={8}
+                                    formatter={v => (
+                                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</span>
+                                    )}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Member list */}
+                    <div className="card">
+                        <div className="card-header">
+                            <div className="card-title">Team Members</div>
+                            <span className="badge badge-blue">{members.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {members.length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">👥</div>
+                                    <div className="empty-state-title">No members yet</div>
+                                </div>
+                            ) : members.map((m) => (
+                                <div
+                                    key={m._id}
+                                    className="flex-between"
+                                    style={{
+                                        padding: '0.6rem 0.8rem',
+                                        background: 'var(--surface-2)',
+                                        borderRadius: 8,
+                                        cursor: 'pointer',
+                                    }}
+                                    onClick={() => navigate(`/member-details/${m.email}`)}
+                                >
+                                    <div className="flex-row">
+                                        <div className="avatar avatar-sm">
+                                            {(m.name || m.email).slice(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                                {m.name || m.email}
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                {m.email}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--primary-light)' }}>
+                                        View →
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Team tasks table */}
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">All Team Tasks</div>
+                        <span className="badge badge-purple">{teamTasks.length} tasks</span>
+                    </div>
+                    <div className="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Assigned To</th>
+                                    <th>Deadline</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teamTasks.length === 0 ? (
+                                    <tr><td colSpan={4}>
+                                        <div className="empty-state">
+                                            <div className="empty-state-icon">📋</div>
+                                            <div className="empty-state-title">No tasks yet</div>
+                                        </div>
+                                    </td></tr>
+                                ) : teamTasks.map((t) => (
+                                    <tr key={t._id}>
+                                        <td style={{ fontWeight: 500 }}>{t.title}</td>
+                                        <td style={{ color: 'var(--text-muted)' }}>
+                                            {t.assignedTo?.name || t.assignedTo?.email || '—'}
+                                        </td>
+                                        <td style={{
+                                            color: 'var(--text-muted)',
+                                            fontFamily: 'JetBrains Mono, monospace',
+                                            fontSize: '0.8rem'
+                                        }}>
+                                            {t.deadline ? new Date(t.deadline).toLocaleDateString() : '—'}
+                                        </td>
+                                        <td>
+                                            <span className="badge" style={{
+                                                background: `${STATUS_COLORS[t.status] || '#6366f1'}18`,
+                                                color: STATUS_COLORS[t.status] || '#a5b4fc',
+                                            }}>
+                                                {t.status || 'pending'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
         </div>
     );
 };

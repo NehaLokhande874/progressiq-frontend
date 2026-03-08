@@ -3,90 +3,140 @@ import { useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
 
 const Login = () => {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [loading, setLoading]   = useState(false);
+    const [error, setError]       = useState('');
     const navigate = useNavigate();
+
+    const handleChange = (e) =>
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
         setLoading(true);
         try {
-            const res = await API.post('/auth/login', formData);
-            
-            // --- 1. Storage Logic ---
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('role', res.data.role); 
-            localStorage.setItem('username', res.data.username); // backend kadun yenara username vapra
-            localStorage.setItem('email', res.data.email);
+            const { data } = await API.post('/auth/login', formData);
+            localStorage.setItem('token',    data.token);
+            localStorage.setItem('role',     data.user.role);
+            localStorage.setItem('username', data.user.name || data.user.email);
+            localStorage.setItem('email',    data.user.email);
 
-            alert(`✅ Login Successful! Welcome to ProjectProgressIQ`);
-            
-            // --- 2. Role-Based Redirection (Updated for Admin) ---
-            const userRole = res.data.role;
-
-            if (userRole === 'Admin') {
-                navigate('/admin-dashboard');
-            } else if (userRole === 'Mentor') {
-                navigate('/mentor-dashboard');
-            } else if (userRole === 'Leader') {
-                navigate('/leader-dashboard');
-            } else if (userRole === 'Member') {
-                navigate('/member-dashboard');
-            } else {
-                alert("❌ Role not recognized!");
-            }
-
+            const routes = {
+                admin:  '/admin-dashboard',
+                leader: '/leader-dashboard',
+                mentor: '/mentor-dashboard',
+                member: '/member-dashboard',
+            };
+            navigate(routes[data.user.role] || '/login');
         } catch (err) {
-            alert(err.response?.data?.msg || "Login failed. Please check your credentials.");
+            setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Styles ---
-    const pageStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100vw', height: '100vh', backgroundColor: '#f5f5f5', position: 'fixed', top: 0, left: 0 };
-    const cardStyle = { width: '380px', padding: '35px', backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0px 10px 25px rgba(0,0,0,0.1)', fontFamily: 'Arial, sans-serif' };
-    const labelStyle = { fontWeight: 'bold', fontSize: '14px', color: '#333' };
-    const inputStyle = { width: '100%', padding: '12px', margin: '8px 0 20px 0', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '14px' };
-    const btnStyle = { width: '100%', padding: '12px', backgroundColor: loading ? '#668fff' : '#0047ff', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold', transition: '0.3s' };
-
     return (
-        <div style={pageStyle}>
-            <div style={cardStyle}>
-                <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>ProjectProgressIQ Login</h2>
-                <form onSubmit={handleSubmit}>
-                    
-                    <label style={labelStyle}>Email Address</label>
-                    <input 
-                        type="email" 
-                        placeholder="example@gmail.com" 
-                        style={inputStyle} 
-                        value={formData.email}
-                        onChange={e => setFormData({...formData, email: e.target.value})} 
-                        required 
-                    />
+        <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--bg)',
+            padding: '1rem',
+        }}>
+            {/* Background glow */}
+            <div style={{
+                position: 'fixed', inset: 0, pointerEvents: 'none',
+                background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%)',
+            }} />
 
-                    <label style={labelStyle}>Password</label>
-                    <input 
-                        type="password" 
-                        placeholder="Enter your password" 
-                        style={inputStyle} 
-                        value={formData.password}
-                        onChange={e => setFormData({...formData, password: e.target.value})} 
-                        required 
-                    />
-
-                    <button type="submit" style={btnStyle} disabled={loading}>
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
-
-                    <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px' }}>
-                        New user? <Link to="/signup" style={{ color: '#0047ff', textDecoration: 'none', fontWeight: 'bold' }}>Register here</Link>
+            <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
+                {/* Logo */}
+                <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                    <div style={{
+                        width: 52, height: 52,
+                        background: 'var(--primary)',
+                        borderRadius: 14,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '1.4rem',
+                        boxShadow: 'var(--glow)',
+                        marginBottom: '1rem',
+                    }}>⚡</div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
+                        Progress<span style={{ color: 'var(--primary-light)' }}>IQ</span>
+                    </h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+                        Sign in to your workspace
                     </p>
-                </form>
+                </div>
+
+                {/* Card */}
+                <div className="card" style={{ padding: '2rem' }}>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.5rem' }}>
+                        Welcome back
+                    </h2>
+
+                    {error && (
+                        <div className="alert alert-error">
+                            <span>⚠</span> {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label className="form-label">Email address</label>
+                            <input
+                                type="email"
+                                name="email"
+                                className="form-input"
+                                placeholder="you@example.com"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Password</label>
+                            <input
+                                type="password"
+                                name="password"
+                                className="form-input"
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="btn btn-primary btn-full btn-lg"
+                            style={{ marginTop: '0.5rem' }}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                                    Signing in…
+                                </>
+                            ) : 'Sign in →'}
+                        </button>
+                    </form>
+
+                    <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        Don't have an account?{' '}
+                        <Link to="/signup" style={{ color: 'var(--primary-light)', fontWeight: 600 }}>
+                            Create one
+                        </Link>
+                    </p>
+                </div>
+
+                <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+                    ProgressIQ · Organization Task Management
+                </p>
             </div>
         </div>
     );

@@ -1,32 +1,73 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-// Pages
-import Login from './pages/Login'; 
-import Signup from './pages/signup'; 
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import AdminDashboard from './pages/AdminDashboard';
+import LeaderDashboard from './pages/LeaderDashboard';
+import LeaderTask from './pages/LeaderTask';
 import MentorDashboard from './pages/MentorDashboard';
-import MemberDashboard from './pages/MemberDashboard'; 
-import LeaderDashboard from './pages/LeaderDashboard'; 
-import LeaderTask from './pages/LeaderTask'; 
+import MemberDashboard from './pages/MemberDashboard';
 import MemberDetailView from './pages/MemberDetailView';
-import AdminDashboard from './pages/AdminDashboard'; // Navin file import kara
+
+// ── Simple auth guard ──────────────────────────────────────────────────────
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const token = localStorage.getItem('token');
+  const role  = localStorage.getItem('role');
+
+  if (!token) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(role)) return <Navigate to="/login" replace />;
+  return children;
+};
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
+        {/* Public */}
+        <Route path="/"       element={<Navigate to="/login" replace />} />
+        <Route path="/login"  element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/mentor-dashboard" element={<MentorDashboard />} />
-        <Route path="/leader-dashboard" element={<LeaderDashboard />} />
-        <Route path="/leader-tasks" element={<LeaderTask />} />
-        <Route path="/member-details/:email" element={<MemberDetailView />} />
-        <Route path="/member-dashboard" element={<MemberDashboard />} />
-        
-        {/* ✅ Admin Route */}
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
 
-        <Route path="*" element={<Navigate to="/login" />} />
+        {/* Admin */}
+        <Route path="/admin-dashboard" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Leader */}
+        <Route path="/leader-dashboard" element={
+          <ProtectedRoute allowedRoles={['leader']}>
+            <LeaderDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/leader-tasks" element={
+          <ProtectedRoute allowedRoles={['leader']}>
+            <LeaderTask />
+          </ProtectedRoute>
+        } />
+
+        {/* Mentor */}
+        <Route path="/mentor-dashboard" element={
+          <ProtectedRoute allowedRoles={['mentor']}>
+            <MentorDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Member */}
+        <Route path="/member-dashboard" element={
+          <ProtectedRoute allowedRoles={['member']}>
+            <MemberDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Shared */}
+        <Route path="/member-details/:email" element={
+          <ProtectedRoute allowedRoles={['admin','leader','mentor']}>
+            <MemberDetailView />
+          </ProtectedRoute>
+        } />
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

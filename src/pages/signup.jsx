@@ -1,137 +1,170 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import API from '../api/axios';
 
 const Signup = () => {
     const location = useLocation();
-    const query = new URLSearchParams(location.search);
-    
-    // 🔗 URL parameters parsing (Invite Link logic)
-    const initialEmail = query.get('email') || '';
-    const initialRole = query.get('role') || 'Member';
-    const leaderEmailFromLink = query.get('leader') || '';
+    const query    = new URLSearchParams(location.search);
 
     const [formData, setFormData] = useState({
-        username: '', 
-        email: initialEmail, 
-        password: '', 
-        // 🔒 Jar leader link asel tar role 'Member' lock hoto, nahitar user select karu shakto
-        role: leaderEmailFromLink ? 'Member' : initialRole,
-        adminSecretKey: '',
-        invitedBy: leaderEmailFromLink // ✅ Backend la connectivity denarya mhatvacha field
+        name:     '',
+        email:    query.get('email') || '',
+        password: '',
+        confirm:  '',
+        role:     query.get('role')  || 'member',
+        token:    query.get('token') || '',
     });
-
     const [loading, setLoading] = useState(false);
+    const [error,   setError]   = useState('');
     const navigate = useNavigate();
 
-    // URL parameters badalle ki form state update karne
-    useEffect(() => {
-        setFormData(prev => ({
-            ...prev,
-            email: initialEmail,
-            role: leaderEmailFromLink ? 'Member' : initialRole,
-            invitedBy: leaderEmailFromLink
-        }));
-    }, [initialEmail, initialRole, leaderEmailFromLink]);
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+    const handleChange = (e) =>
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (formData.password.length < 6) {
-            return alert("Password must be at least 6 characters long");
+        setError('');
+        if (formData.password !== formData.confirm) {
+            return setError('Passwords do not match.');
         }
-
         setLoading(true);
         try {
-            // ✅ Sagle data (invitedBy sobat) backend la pathvat aahe
-            const response = await API.post('/auth/signup', formData); 
-            
-            if (response.status === 201 || response.status === 200) {
-                alert("✅ Registration Successful! Please login.");
-                navigate('/'); 
-            }
+            await API.post('/auth/signup', {
+                name:     formData.name,
+                email:    formData.email,
+                password: formData.password,
+                role:     formData.role,
+                token:    formData.token,
+            });
+            navigate('/login');
         } catch (err) {
-            const errorMsg = err.response?.data?.error || err.response?.data?.msg || "Signup failed.";
-            alert("❌ " + errorMsg);
+            setError(err.response?.data?.message || 'Registration failed. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Dynamic Styles ---
-    const pageStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100vw', height: '100vh', backgroundColor: '#f5f5f5', position: 'fixed', top: 0, left: 0 };
-    const cardStyle = { width: '380px', padding: '30px', backgroundColor: '#ffffff', borderRadius: '10px', boxShadow: '0px 4px 15px rgba(0,0,0,0.1)', fontFamily: 'Arial, sans-serif' };
-    const labelStyle = { fontWeight: 'bold', fontSize: '13px', color: '#333' };
-    const inputStyle = { width: '100%', padding: '12px', margin: '8px 0 18px 0', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '14px' };
-    const btnStyle = { width: '100%', padding: '12px', backgroundColor: loading ? '#668fff' : '#0047ff', color: 'white', border: 'none', borderRadius: '5px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold' };
-
     return (
-        <div style={pageStyle}>
-            <div style={cardStyle}>
-                <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#1a1a1a' }}>Create New Account</h2>
-                
-                {/* 📩 Invite Info Box (Fakt link varun alyavar disel) */}
-                {leaderEmailFromLink && (
-                    <div style={{ backgroundColor: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: '8px', padding: '10px 14px', marginBottom: '20px', fontSize: '13px', color: '#276749' }}>
-                        🎉 Joining <b>{leaderEmailFromLink}</b>'s team!
-                    </div>
-                )}
+        <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--bg)',
+            padding: '1rem',
+        }}>
+            <div style={{
+                position: 'fixed', inset: 0, pointerEvents: 'none',
+                background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(34,211,238,0.08) 0%, transparent 70%)',
+            }} />
 
-                <form onSubmit={handleSubmit}>
-                    <label style={labelStyle}>Full Name</label>
-                    <input type="text" name="username" placeholder="Enter full name" style={inputStyle} value={formData.username} onChange={handleChange} required />
-                    
-                    <label style={labelStyle}>Email Address</label>
-                    <input type="email" name="email" placeholder="example@gmail.com" style={inputStyle} value={formData.email} onChange={handleChange} required />
-                    
-                    <label style={labelStyle}>Password</label>
-                    <input type="password" name="password" placeholder="Min. 6 characters" style={inputStyle} value={formData.password} onChange={handleChange} required />
-                    
-                    {/* Role Selection Logic */}
-                    {!leaderEmailFromLink ? (
-                        <>
-                            <label style={labelStyle}>Register as:</label>
-                            <select name="role" style={inputStyle} value={formData.role} onChange={handleChange}>
-                                <option value="Member">Member</option>
-                                <option value="Leader">Leader</option>
-                                <option value="Mentor">Mentor</option>
-                                <option value="Admin">Admin (Super Power)</option>
-                            </select>
-                        </>
-                    ) : (
-                        <div style={{ marginBottom: '18px', fontSize: '14px', color: '#666' }}>
-                            Role: <b>Member</b> (Locked by Invite)
+            <div style={{ width: '100%', maxWidth: '440px', position: 'relative', zIndex: 1 }}>
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                    <div style={{
+                        width: 52, height: 52, background: 'var(--primary)',
+                        borderRadius: 14, display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '1.4rem',
+                        boxShadow: 'var(--glow)', marginBottom: '1rem',
+                    }}>⚡</div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
+                        Progress<span style={{ color: 'var(--primary-light)' }}>IQ</span>
+                    </h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+                        Create your account
+                    </p>
+                </div>
+
+                <div className="card" style={{ padding: '2rem' }}>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.5rem' }}>
+                        Register
+                    </h2>
+
+                    {error && (
+                        <div className="alert alert-error">
+                            <span>⚠</span> {error}
                         </div>
                     )}
 
-                    {/* ✅ Admin Secret Key Field (Fakt Admin select kelyavar disel) */}
-                    {formData.role === 'Admin' && (
-                        <div style={{ padding: '10px', backgroundColor: '#fff5f5', borderRadius: '6px', marginBottom: '15px', border: '1px solid #feb2b2' }}>
-                            <label style={{ ...labelStyle, color: '#c53030' }}>Admin Secret Key</label>
-                            <input 
-                                type="password" 
-                                name="adminSecretKey" 
-                                placeholder="Enter secret code" 
-                                style={{ ...inputStyle, marginBottom: 0, borderColor: '#fc8181' }} 
-                                value={formData.adminSecretKey} 
-                                onChange={handleChange} 
-                                required 
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label className="form-label">Full name</label>
+                            <input
+                                type="text" name="name" className="form-input"
+                                placeholder="Jane Doe"
+                                value={formData.name} onChange={handleChange} required
                             />
                         </div>
-                    )}
-                    
-                    <button type="submit" style={btnStyle} disabled={loading}>
-                        {loading ? 'Processing...' : 'Sign Up'}
-                    </button>
-                    
-                    <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px' }}>
-                        Already have an account? <Link to="/" style={{ color: '#0047ff', textDecoration: 'none', fontWeight: 'bold' }}>Login</Link>
+
+                        <div className="form-group">
+                            <label className="form-label">Email address</label>
+                            <input
+                                type="email" name="email" className="form-input"
+                                placeholder="you@example.com"
+                                value={formData.email} onChange={handleChange} required
+                            />
+                        </div>
+
+                        <div className="grid-2">
+                            <div className="form-group">
+                                <label className="form-label">Password</label>
+                                <input
+                                    type="password" name="password" className="form-input"
+                                    placeholder="••••••••"
+                                    value={formData.password} onChange={handleChange} required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Confirm</label>
+                                <input
+                                    type="password" name="confirm" className="form-input"
+                                    placeholder="••••••••"
+                                    value={formData.confirm} onChange={handleChange} required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Role</label>
+                            <select name="role" className="form-select"
+                                value={formData.role} onChange={handleChange}>
+                                <option value="member">Member</option>
+                                <option value="mentor">Mentor</option>
+                                <option value="leader">Leader</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+
+                        {formData.token && (
+                            <div className="form-group">
+                                <label className="form-label">Invite token</label>
+                                <input
+                                    type="text" name="token" className="form-input"
+                                    value={formData.token} readOnly
+                                    style={{ opacity: 0.6 }}
+                                />
+                            </div>
+                        )}
+
+                        <button
+                            type="submit" className="btn btn-primary btn-full btn-lg"
+                            style={{ marginTop: '0.5rem' }} disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                                    Creating account…
+                                </>
+                            ) : 'Create account →'}
+                        </button>
+                    </form>
+
+                    <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        Already have an account?{' '}
+                        <Link to="/login" style={{ color: 'var(--primary-light)', fontWeight: 600 }}>
+                            Sign in
+                        </Link>
                     </p>
-                </form>
+                </div>
             </div>
         </div>
     );
