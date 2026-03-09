@@ -120,13 +120,18 @@ const LeaderTask = () => {
                 {error   && <div className="alert alert-error"><span>⚠</span> {error}</div>}
                 {success && <div className="alert alert-success"><span>✓</span> {success}</div>}
 
+                {/* Assign tasks */}
                 <div className="card" style={{ marginBottom: '1.5rem' }}>
                     <div className="card-header">
                         <div>
                             <div className="card-title">Assign New Tasks</div>
-                            <div className="card-subtitle">Set title, assignee, deadline and difficulty weightage</div>
+                            <div className="card-subtitle">
+                                Set title, assignee, deadline and difficulty weightage
+                            </div>
                         </div>
-                        <button className="btn btn-secondary btn-sm" onClick={addRow}>+ Add Row</button>
+                        <button className="btn btn-secondary btn-sm" onClick={addRow}>
+                            + Add Row
+                        </button>
                     </div>
 
                     <form onSubmit={handleSubmit}>
@@ -184,7 +189,8 @@ const LeaderTask = () => {
                                         />
                                         <span style={{
                                             minWidth: 28, textAlign: 'center',
-                                            fontWeight: 700, color: 'var(--primary-light)', fontSize: '0.9rem'
+                                            fontWeight: 700, color: 'var(--primary-light)',
+                                            fontSize: '0.9rem'
                                         }}>{task.weightage}</span>
                                     </div>
                                     <button
@@ -213,6 +219,7 @@ const LeaderTask = () => {
                     </form>
                 </div>
 
+                {/* Tasks table */}
                 <div className="card">
                     <div className="card-header">
                         <div className="card-title">All Assigned Tasks</div>

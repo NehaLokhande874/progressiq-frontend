@@ -8,11 +8,11 @@ const BACKEND_URL = import.meta.env.VITE_API_URL?.replace('/api', '')
                  || 'https://progressiq-backend.onrender.com';
 
 const STATUS_COLORS = {
-    Completed:   { bg: 'rgba(16,185,129,0.12)', color: '#34d399', hex: '#10b981' },
-    Pending:     { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
-    Active:      { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
-    Submitted:   { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc', hex: '#6366f1' },
-    Revision:    { bg: 'rgba(239,68,68,0.12)',  color: '#f87171', hex: '#ef4444' },
+    Completed: { bg: 'rgba(16,185,129,0.12)', color: '#34d399', hex: '#10b981' },
+    Pending:   { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
+    Active:    { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
+    Submitted: { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc', hex: '#6366f1' },
+    Revision:  { bg: 'rgba(239,68,68,0.12)',  color: '#f87171', hex: '#ef4444' },
 };
 
 const MemberDashboard = () => {
@@ -126,7 +126,8 @@ const MemberDashboard = () => {
         { name: 'Revision',  value: revision,   color: '#ef4444' },
     ].filter(d => d.value > 0);
 
-    const scorePct = totalMarks ? Math.round((autoScore / totalMarks) * 100) : 0;
+    const scorePct = totalMarks
+        ? Math.round((autoScore / totalMarks) * 100) : 0;
 
     return (
         <div className="page-shell">
@@ -170,7 +171,7 @@ const MemberDashboard = () => {
                     ))}
                 </div>
 
-                {/* Score + Donut chart */}
+                {/* Score + Donut */}
                 <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
 
                     <div className="card">
@@ -184,18 +185,25 @@ const MemberDashboard = () => {
                         <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                             <div style={{
                                 fontSize: '3rem', fontWeight: 800,
-                                color: 'var(--primary-light)', letterSpacing: '-0.04em'
+                                color: 'var(--primary-light)',
+                                letterSpacing: '-0.04em'
                             }}>
                                 {autoScore}
-                                <span style={{ fontSize: '1.4rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                                    /{totalMarks}
-                                </span>
+                                <span style={{
+                                    fontSize: '1.4rem',
+                                    color: 'var(--text-muted)',
+                                    fontWeight: 400
+                                }}>/{totalMarks}</span>
                             </div>
                             <div style={{ margin: '0.75rem auto', maxWidth: 200 }}>
                                 <div className="progress-bar" style={{ height: 10 }}>
                                     <div className="progress-fill" style={{ width: `${scorePct}%` }} />
                                 </div>
-                                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                                <div style={{
+                                    fontSize: '0.82rem',
+                                    color: 'var(--text-muted)',
+                                    marginTop: '0.4rem'
+                                }}>
                                     {scorePct}% of total marks
                                 </div>
                             </div>
@@ -203,11 +211,15 @@ const MemberDashboard = () => {
                         <div style={{
                             background: 'rgba(99,102,241,0.06)', borderRadius: 8,
                             padding: '0.75rem', fontSize: '0.78rem',
-                            color: 'var(--text-muted)', borderLeft: '3px solid var(--primary)'
+                            color: 'var(--text-muted)',
+                            borderLeft: '3px solid var(--primary)'
                         }}>
-                            <strong style={{ color: 'var(--primary-light)' }}>How is this calculated?</strong>
+                            <strong style={{ color: 'var(--primary-light)' }}>
+                                How is this calculated?
+                            </strong>
                             <br />
-                            Task Completion (40%) + On-Time Delivery (30%) + Task Difficulty (20%) + Mentor Feedback (10%)
+                            Task Completion (40%) + On-Time Delivery (30%) +
+                            Task Difficulty (20%) + Mentor Feedback (10%)
                         </div>
                     </div>
 
@@ -236,7 +248,11 @@ const MemberDashboard = () => {
                                         borderRadius: 8, fontSize: 12
                                     }} />
                                     <Legend iconType="circle" iconSize={8}
-                                        formatter={v => <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</span>} />
+                                        formatter={v => (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                                                {v}
+                                            </span>
+                                        )} />
                                 </PieChart>
                             </ResponsiveContainer>
                         )}
@@ -249,7 +265,9 @@ const MemberDashboard = () => {
                         <div className="empty-state">
                             <div className="empty-state-icon">📋</div>
                             <div className="empty-state-title">No tasks assigned yet</div>
-                            <div className="empty-state-body">Your leader will assign tasks to you soon</div>
+                            <div className="empty-state-body">
+                                Your leader will assign tasks to you soon
+                            </div>
                         </div>
                     </div>
                 ) : (
@@ -271,7 +289,10 @@ const MemberDashboard = () => {
                                             }}>
                                                 {task.title}
                                             </h3>
-                                            <div className="flex-row" style={{ marginTop: '0.25rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <div className="flex-row" style={{
+                                                marginTop: '0.25rem',
+                                                gap: '0.5rem', flexWrap: 'wrap'
+                                            }}>
                                                 {task.deadline && (
                                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                         📅 Due: {new Date(task.deadline).toLocaleDateString()}
@@ -279,13 +300,22 @@ const MemberDashboard = () => {
                                                 )}
                                                 {task.weightage && (
                                                     <span style={{
-                                                        background: 'rgba(99,102,241,0.12)', color: '#a5b4fc',
+                                                        background: 'rgba(99,102,241,0.12)',
+                                                        color: '#a5b4fc',
                                                         padding: '1px 7px', borderRadius: 5,
                                                         fontSize: '0.72rem', fontWeight: 700
                                                     }}>⚖ {task.weightage}/10</span>
                                                 )}
-                                                {task.onTime === true  && <span style={{ fontSize: '0.72rem', color: '#10b981' }}>✅ On time</span>}
-                                                {task.onTime === false && isDone && <span style={{ fontSize: '0.72rem', color: '#ef4444' }}>⚠ Late</span>}
+                                                {task.onTime === true && (
+                                                    <span style={{ fontSize: '0.72rem', color: '#10b981' }}>
+                                                        ✅ On time
+                                                    </span>
+                                                )}
+                                                {task.onTime === false && isDone && (
+                                                    <span style={{ fontSize: '0.72rem', color: '#ef4444' }}>
+                                                        ⚠ Late
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <span className="badge" style={{ background: sc.bg, color: sc.color }}>
@@ -304,9 +334,14 @@ const MemberDashboard = () => {
                                             <strong style={{ color: 'var(--primary-light)' }}>
                                                 Mentor feedback:
                                             </strong>{' '}
-                                            <span style={{ color: 'var(--text-muted)' }}>{task.feedback}</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>
+                                                {task.feedback}
+                                            </span>
                                             {task.feedbackScore > 0 && (
-                                                <span style={{ marginLeft: '0.5rem', color: '#fbbf24', fontWeight: 700 }}>
+                                                <span style={{
+                                                    marginLeft: '0.5rem',
+                                                    color: '#fbbf24', fontWeight: 700
+                                                }}>
                                                     ⭐ {task.feedbackScore}/10
                                                 </span>
                                             )}
@@ -316,8 +351,14 @@ const MemberDashboard = () => {
                                     {/* Progress bar */}
                                     <div style={{ marginBottom: '0.75rem' }}>
                                         <div className="flex-between" style={{ marginBottom: '0.3rem' }}>
-                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Progress</span>
-                                            <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                Progress
+                                            </span>
+                                            <span style={{
+                                                fontSize: '0.72rem',
+                                                fontFamily: 'JetBrains Mono, monospace',
+                                                color: 'var(--text-muted)'
+                                            }}>
                                                 {isDone                           ? '100%'
                                                  : task.status === 'Submitted'   ? '75%'
                                                  : task.status === 'Revision'    ? '40%'
@@ -352,9 +393,14 @@ const MemberDashboard = () => {
                                                 <button
                                                     className="btn btn-primary btn-sm"
                                                     onClick={() => submitProgress(task._id)}
-                                                    disabled={submitting[task._id] || !progressNote[task._id]?.trim()}
+                                                    disabled={
+                                                        submitting[task._id] ||
+                                                        !progressNote[task._id]?.trim()
+                                                    }
                                                 >
-                                                    {submitting[task._id] ? 'Submitting…' : '📤 Submit Progress'}
+                                                    {submitting[task._id]
+                                                        ? 'Submitting…'
+                                                        : '📤 Submit Progress'}
                                                 </button>
                                                 <button
                                                     className="btn btn-success btn-sm"

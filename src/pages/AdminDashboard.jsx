@@ -23,8 +23,10 @@ const AdminDashboard = () => {
     const [error,        setError]        = useState('');
     const [notification, setNotification] = useState('');
     const [activeTab,    setActiveTab]    = useState('overview');
-    const [teamForm,     setTeamForm]     = useState({ email: '', teamName: '', projectName: '', totalMarks: 100 });
-    const [teamMsg,      setTeamMsg]      = useState('');
+    const [teamForm,     setTeamForm]     = useState({
+        email: '', teamName: '', projectName: '', totalMarks: 100
+    });
+    const [teamMsg, setTeamMsg] = useState('');
     const socketRef = useRef(null);
 
     useEffect(() => {
@@ -140,7 +142,8 @@ const AdminDashboard = () => {
                         <p className="page-subtitle">
                             System-wide overview ·{' '}
                             {new Date().toLocaleDateString('en-US', {
-                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                                weekday: 'long', year: 'numeric',
+                                month: 'long', day: 'numeric'
                             })}
                         </p>
                     </div>
@@ -195,12 +198,17 @@ const AdminDashboard = () => {
                                 <ResponsiveContainer width="100%" height={220}>
                                     <PieChart>
                                         <Pie data={pieData} cx="50%" cy="50%"
-                                            innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                                            innerRadius={55} outerRadius={85}
+                                            paddingAngle={3} dataKey="value">
                                             {pieData.map((_, i) => (
                                                 <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="transparent" />
                                             ))}
                                         </Pie>
-                                        <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                                        <Tooltip contentStyle={{
+                                            background: 'var(--surface-2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 8, fontSize: 12
+                                        }} />
                                         <Legend iconType="circle" iconSize={8}
                                             formatter={v => <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</span>} />
                                     </PieChart>
@@ -217,12 +225,17 @@ const AdminDashboard = () => {
                                 <ResponsiveContainer width="100%" height={220}>
                                     <PieChart>
                                         <Pie data={statusPie} cx="50%" cy="50%"
-                                            innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                                            innerRadius={55} outerRadius={85}
+                                            paddingAngle={3} dataKey="value">
                                             {statusPie.map((_, i) => (
                                                 <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="transparent" />
                                             ))}
                                         </Pie>
-                                        <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                                        <Tooltip contentStyle={{
+                                            background: 'var(--surface-2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 8, fontSize: 12
+                                        }} />
                                         <Legend iconType="circle" iconSize={8}
                                             formatter={v => <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</span>} />
                                     </PieChart>
@@ -239,7 +252,9 @@ const AdminDashboard = () => {
                             <div className="card-header">
                                 <div>
                                     <div className="card-title">Assign Team & Project</div>
-                                    <div className="card-subtitle">Set team name, project and total marks</div>
+                                    <div className="card-subtitle">
+                                        Set team name, project and total marks for any user
+                                    </div>
                                 </div>
                             </div>
                             {teamMsg && (
@@ -248,7 +263,10 @@ const AdminDashboard = () => {
                                 </div>
                             )}
                             <form onSubmit={assignTeam}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div style={{
+                                    display: 'grid', gridTemplateColumns: '1fr 1fr',
+                                    gap: '1rem', marginBottom: '1rem'
+                                }}>
                                     <div className="form-group">
                                         <label className="form-label">User</label>
                                         <select className="form-select"
@@ -284,7 +302,9 @@ const AdminDashboard = () => {
                                             onChange={e => setTeamForm(p => ({ ...p, totalMarks: +e.target.value }))} />
                                     </div>
                                 </div>
-                                <button type="submit" className="btn btn-primary">Assign Team</button>
+                                <button type="submit" className="btn btn-primary">
+                                    Assign Team
+                                </button>
                             </form>
                         </div>
 
@@ -294,7 +314,10 @@ const AdminDashboard = () => {
                                     <div>
                                         <div className="card-title">👥 {teamName}</div>
                                         <div className="card-subtitle">
-                                            Project: <strong style={{ color: 'var(--primary-light)' }}>{team.projectName}</strong>
+                                            Project:{' '}
+                                            <strong style={{ color: 'var(--primary-light)' }}>
+                                                {team.projectName}
+                                            </strong>
                                             {' · '}{team.members.length} member(s)
                                         </div>
                                     </div>
@@ -303,7 +326,10 @@ const AdminDashboard = () => {
                                 <div className="table-wrap">
                                     <table>
                                         <thead>
-                                            <tr><th>Name</th><th>Email</th><th>Role</th><th>Score</th></tr>
+                                            <tr>
+                                                <th>Name</th><th>Email</th>
+                                                <th>Role</th><th>Score</th>
+                                            </tr>
                                         </thead>
                                         <tbody>
                                             {team.members.map(u => (
@@ -313,7 +339,7 @@ const AdminDashboard = () => {
                                                     <td>
                                                         <span className="badge" style={{
                                                             background: `${ROLE_COLOR[u.role] || '#6366f1'}18`,
-                                                            color: ROLE_COLOR[u.role] || '#a5b4fc'
+                                                            color: ROLE_COLOR[u.role] || '#a5b4fc',
                                                         }}>{u.role}</span>
                                                     </td>
                                                     <td>
@@ -340,7 +366,9 @@ const AdminDashboard = () => {
                             <div className="card-header">
                                 <div>
                                     <div className="card-title">🏆 Auto-Evaluation Scores</div>
-                                    <div className="card-subtitle">Calculated automatically — no manual editing possible</div>
+                                    <div className="card-subtitle">
+                                        Calculated automatically — no manual editing possible
+                                    </div>
                                 </div>
                                 <span className="badge badge-green">🔒 Auto-locked</span>
                             </div>
@@ -351,7 +379,8 @@ const AdminDashboard = () => {
                                 borderLeft: '3px solid var(--primary)',
                             }}>
                                 <strong style={{ color: 'var(--primary-light)' }}>Score Formula: </strong>
-                                Completion Rate (40%) + On-Time Delivery (30%) + Task Weightage (20%) + Mentor Feedback (10%)
+                                Completion Rate (40%) + On-Time Delivery (30%) +
+                                Task Weightage (20%) + Mentor Feedback (10%)
                             </div>
                             <ResponsiveContainer width="100%" height={280}>
                                 <BarChart data={scoreData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -359,8 +388,13 @@ const AdminDashboard = () => {
                                     <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                                     <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                                     <Tooltip
-                                        contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                                        formatter={(value, name, props) => [`${value}/${props.payload.total}`, 'Score']}
+                                        contentStyle={{
+                                            background: 'var(--surface-2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 8, fontSize: 12
+                                        }}
+                                        formatter={(value, name, props) =>
+                                            [`${value}/${props.payload.total}`, 'Score']}
                                     />
                                     <Bar dataKey="score" fill="#6366f1" radius={[6, 6, 0, 0]} />
                                 </BarChart>
@@ -395,14 +429,18 @@ const AdminDashboard = () => {
                                                     <td style={{ fontWeight: 500 }}>{u.username}</td>
                                                     <td style={{ color: 'var(--text-muted)' }}>{u.teamName    || '—'}</td>
                                                     <td style={{ color: 'var(--text-muted)' }}>{u.projectName || '—'}</td>
-                                                    <td style={{ fontWeight: 700, color: 'var(--primary-light)' }}>{u.autoScore || 0}</td>
+                                                    <td style={{ fontWeight: 700, color: 'var(--primary-light)' }}>
+                                                        {u.autoScore || 0}
+                                                    </td>
                                                     <td>{u.totalMarks || 100}</td>
                                                     <td>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                             <div className="progress-bar" style={{ flex: 1, height: 6 }}>
                                                                 <div className="progress-fill" style={{ width: `${pct}%` }} />
                                                             </div>
-                                                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{pct}%</span>
+                                                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                                                {pct}%
+                                                            </span>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -459,11 +497,18 @@ const AdminDashboard = () => {
                                             </td>
                                             <td style={{ color: 'var(--text-muted)' }}>{u.teamName    || '—'}</td>
                                             <td style={{ color: 'var(--text-muted)' }}>{u.projectName || '—'}</td>
-                                            <td style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem' }}>
+                                            <td style={{
+                                                color: 'var(--text-muted)',
+                                                fontFamily: 'JetBrains Mono, monospace',
+                                                fontSize: '0.8rem'
+                                            }}>
                                                 {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                                             </td>
                                             <td>
-                                                <button className="btn btn-danger btn-sm" onClick={() => deleteUser(u.email)}>
+                                                <button
+                                                    className="btn btn-danger btn-sm"
+                                                    onClick={() => deleteUser(u.email)}
+                                                >
                                                     Delete
                                                 </button>
                                             </td>

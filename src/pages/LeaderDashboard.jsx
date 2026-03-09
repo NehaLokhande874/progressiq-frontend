@@ -70,7 +70,9 @@ const LeaderDashboard = () => {
         { name: 'Submitted', value: stats.submitted  },
     ].filter(d => d.value > 0);
 
-    const completionRate = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
+    const completionRate = stats.total
+        ? Math.round((stats.completed / stats.total) * 100) : 0;
+
     const COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ef4444'];
 
     const scoreData = members.map(m => ({
@@ -103,6 +105,7 @@ const LeaderDashboard = () => {
                 {notification && <div className="alert alert-info">{notification}</div>}
                 {error        && <div className="alert alert-error"><span>⚠</span> {error}</div>}
 
+                {/* Stats */}
                 <div className="stats-grid">
                     {[
                         { icon: '📋', label: 'Total Tasks',     value: stats.total,          color: 'blue'   },
@@ -121,22 +124,37 @@ const LeaderDashboard = () => {
                     ))}
                 </div>
 
+                {/* Charts */}
                 <div className="grid-2" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
                     <div className="card">
-                        <div className="card-header"><div className="card-title">Task Status Distribution</div></div>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <PieChart>
-                                <Pie data={pieData} cx="50%" cy="50%"
-                                    innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                                    {pieData.map((_, i) => (
-                                        <Cell key={i} fill={COLORS[i] || '#6366f1'} stroke="transparent" />
-                                    ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
-                                <Legend iconType="circle" iconSize={8}
-                                    formatter={v => <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</span>} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        <div className="card-header">
+                            <div className="card-title">Task Status Distribution</div>
+                        </div>
+                        {pieData.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-state-icon">📊</div>
+                                <div className="empty-state-title">No task data yet</div>
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <PieChart>
+                                    <Pie data={pieData} cx="50%" cy="50%"
+                                        innerRadius={55} outerRadius={85}
+                                        paddingAngle={3} dataKey="value">
+                                        {pieData.map((_, i) => (
+                                            <Cell key={i} fill={COLORS[i] || '#6366f1'} stroke="transparent" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{
+                                        background: 'var(--surface-2)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 8, fontSize: 12
+                                    }} />
+                                    <Legend iconType="circle" iconSize={8}
+                                        formatter={v => <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{v}</span>} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
 
                     <div className="card">
@@ -156,17 +174,21 @@ const LeaderDashboard = () => {
                                     <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
                                     <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
                                     <Tooltip
-                                        contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                                        contentStyle={{
+                                            background: 'var(--surface-2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 8, fontSize: 12
+                                        }}
                                         formatter={(v, n, p) => [`${v}/${p.payload.total}`, 'Score']}
                                     />
-                                    <Bar dataKey="score" fill="#6366f1" radius={[6,6,0,0]} />
+                                    <Bar dataKey="score" fill="#6366f1" radius={[6, 6, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
                     </div>
                 </div>
 
-                {/* Member list */}
+                {/* Members list */}
                 <div className="card" style={{ marginBottom: '1.5rem' }}>
                     <div className="card-header">
                         <div className="card-title">Team Members</div>
@@ -177,14 +199,19 @@ const LeaderDashboard = () => {
                             <div className="empty-state">
                                 <div className="empty-state-icon">👥</div>
                                 <div className="empty-state-title">No members yet</div>
+                                <div className="empty-state-body">
+                                    Ask admin to assign members to your team
+                                </div>
                             </div>
                         ) : members.map(m => {
                             const pct = m.totalMarks
                                 ? Math.round(((m.autoScore || 0) / m.totalMarks) * 100) : 0;
                             return (
                                 <div key={m._id} className="flex-between" style={{
-                                    padding: '0.75rem 1rem', background: 'var(--surface-2)',
-                                    borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)',
+                                    padding: '0.75rem 1rem',
+                                    background: 'var(--surface-2)',
+                                    borderRadius: 10, cursor: 'pointer',
+                                    border: '1px solid var(--border)',
                                 }} onClick={() => navigate(`/member-details/${m.email}`)}>
                                     <div className="flex-row">
                                         <div className="avatar avatar-sm">
@@ -201,7 +228,10 @@ const LeaderDashboard = () => {
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary-light)' }}>
+                                            <div style={{
+                                                fontSize: '0.8rem', fontWeight: 700,
+                                                color: 'var(--primary-light)'
+                                            }}>
                                                 {m.autoScore || 0}/{m.totalMarks || 100}
                                             </div>
                                             <div style={{ width: 80 }}>
@@ -210,7 +240,9 @@ const LeaderDashboard = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--primary-light)' }}>View →</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--primary-light)' }}>
+                                            View →
+                                        </span>
                                     </div>
                                 </div>
                             );
@@ -251,7 +283,11 @@ const LeaderDashboard = () => {
                                                 fontSize: '0.78rem', fontWeight: 700
                                             }}>{t.weightage || 5}/10</span>
                                         </td>
-                                        <td style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem' }}>
+                                        <td style={{
+                                            color: 'var(--text-muted)',
+                                            fontFamily: 'JetBrains Mono, monospace',
+                                            fontSize: '0.8rem'
+                                        }}>
                                             {t.deadline ? new Date(t.deadline).toLocaleDateString() : '—'}
                                         </td>
                                         <td>

@@ -51,7 +51,7 @@ const MentorDashboard = () => {
 
     const fetchTasks = async () => {
         try {
-            const { data } = await API.get('/tasks/mentor/tasks');
+            const { data } = await API.get(`/tasks/mentor/tasks?email=${email}`);
             const grouped  = data.reduce((acc, task) => {
                 const key = task.assignedTo || 'Unknown';
                 if (!acc[key]) acc[key] = { email: key, tasks: [] };
@@ -91,12 +91,14 @@ const MentorDashboard = () => {
     const submitted    = allTasks.filter(t => t.status === 'Submitted').length;
     const completed    = allTasks.filter(t => t.status === 'Completed').length;
 
-    const chartData = Object.entries(groupedTasks).map(([email, { tasks }]) => {
+    const chartData = Object.entries(groupedTasks).map(([memberEmail, { tasks }]) => {
         const scoredTasks = tasks.filter(t => t.feedbackScore > 0);
         return {
-            name:  email.split('@')[0],
+            name:  memberEmail.split('@')[0],
             score: scoredTasks.length
-                ? Math.round(scoredTasks.reduce((s, t) => s + t.feedbackScore, 0) / scoredTasks.length * 10) / 10
+                ? Math.round(
+                    scoredTasks.reduce((s, t) => s + t.feedbackScore, 0)
+                    / scoredTasks.length * 10) / 10
                 : 0,
         };
     });
@@ -165,7 +167,7 @@ const MentorDashboard = () => {
                     </div>
                 )}
 
-                {/* Grouped by member */}
+                {/* Tasks grouped by member */}
                 {Object.keys(groupedTasks).length === 0 ? (
                     <div className="card">
                         <div className="empty-state">
@@ -189,7 +191,8 @@ const MentorDashboard = () => {
                                     <div className="card-subtitle">{tasks.length} task(s)</div>
                                 </div>
                             </div>
-                            <button className="btn btn-secondary btn-sm"
+                            <button
+                                className="btn btn-secondary btn-sm"
                                 onClick={() => navigate(`/member-details/${memberEmail}`)}>
                                 View Profile →
                             </button>
@@ -203,6 +206,7 @@ const MentorDashboard = () => {
                                         background: 'var(--surface-2)', borderRadius: 10,
                                         padding: '1rem 1.2rem', border: '1px solid var(--border)',
                                     }}>
+                                        {/* Task header */}
                                         <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
                                             <div>
                                                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
@@ -210,7 +214,8 @@ const MentorDashboard = () => {
                                                 </span>
                                                 <span style={{
                                                     marginLeft: '0.6rem',
-                                                    background: 'rgba(99,102,241,0.12)', color: '#a5b4fc',
+                                                    background: 'rgba(99,102,241,0.12)',
+                                                    color: '#a5b4fc',
                                                     padding: '1px 7px', borderRadius: 5,
                                                     fontSize: '0.75rem', fontWeight: 700
                                                 }}>⚖ {task.weightage || 5}/10</span>
@@ -220,14 +225,28 @@ const MentorDashboard = () => {
                                             </span>
                                         </div>
 
+                                        {/* Deadline + onTime */}
                                         {task.deadline && (
-                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                            <p style={{
+                                                fontSize: '0.75rem',
+                                                color: 'var(--text-muted)',
+                                                marginBottom: '0.5rem'
+                                            }}>
                                                 📅 Due: {new Date(task.deadline).toLocaleDateString()}
-                                                {task.onTime === true  && <span style={{ color: '#10b981', marginLeft: '0.5rem' }}>✅ On time</span>}
-                                                {task.onTime === false && task.status === 'Submitted' && <span style={{ color: '#ef4444', marginLeft: '0.5rem' }}>⚠ Late</span>}
+                                                {task.onTime === true && (
+                                                    <span style={{ color: '#10b981', marginLeft: '0.5rem' }}>
+                                                        ✅ On time
+                                                    </span>
+                                                )}
+                                                {task.onTime === false && task.status === 'Submitted' && (
+                                                    <span style={{ color: '#ef4444', marginLeft: '0.5rem' }}>
+                                                        ⚠ Late
+                                                    </span>
+                                                )}
                                             </p>
                                         )}
 
+                                        {/* Progress note */}
                                         {task.progressNote && (
                                             <div style={{
                                                 background: 'var(--surface-3)', borderRadius: 6,
@@ -235,7 +254,9 @@ const MentorDashboard = () => {
                                                 color: 'var(--text-muted)', marginBottom: '0.75rem',
                                                 borderLeft: '3px solid var(--primary)',
                                             }}>
-                                                <strong style={{ color: 'var(--text)' }}>Progress note:</strong>{' '}
+                                                <strong style={{ color: 'var(--text)' }}>
+                                                    Progress note:
+                                                </strong>{' '}
                                                 {task.progressNote}
                                             </div>
                                         )}
@@ -257,33 +278,41 @@ const MentorDashboard = () => {
                                             </div>
                                         )}
 
-                                        {/* Feedback form — only for submitted */}
+                                        {/* Feedback form — only for Submitted */}
                                         {task.status === 'Submitted' && (
                                             <div style={{ marginTop: '0.75rem' }}>
                                                 <textarea
                                                     className="form-textarea"
                                                     placeholder="Write feedback for this task…"
                                                     value={feedback[task._id] || ''}
-                                                    onChange={e => setFeedback(p => ({ ...p, [task._id]: e.target.value }))}
+                                                    onChange={e => setFeedback(p => ({
+                                                        ...p, [task._id]: e.target.value
+                                                    }))}
                                                     style={{ minHeight: 70, marginBottom: '0.5rem' }}
                                                 />
-                                                {/* Feedback score slider */}
                                                 <div style={{
                                                     display: 'flex', alignItems: 'center',
                                                     gap: '0.75rem', marginBottom: '0.6rem'
                                                 }}>
-                                                    <label style={{ fontSize: '0.82rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                                    <label style={{
+                                                        fontSize: '0.82rem',
+                                                        color: 'var(--text-muted)',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
                                                         Score (1-10):
                                                     </label>
                                                     <input
                                                         type="range" min="1" max="10" step="1"
                                                         value={fbScore[task._id] || 5}
-                                                        onChange={e => setFbScore(p => ({ ...p, [task._id]: +e.target.value }))}
+                                                        onChange={e => setFbScore(p => ({
+                                                            ...p, [task._id]: +e.target.value
+                                                        }))}
                                                         style={{ flex: 1, accentColor: 'var(--primary)' }}
                                                     />
                                                     <span style={{
                                                         minWidth: 28, textAlign: 'center',
-                                                        fontWeight: 700, color: '#fbbf24', fontSize: '1rem'
+                                                        fontWeight: 700, color: '#fbbf24',
+                                                        fontSize: '1rem'
                                                     }}>
                                                         {fbScore[task._id] || 5}
                                                     </span>
@@ -293,7 +322,9 @@ const MentorDashboard = () => {
                                                     onClick={() => submitFeedback(task._id)}
                                                     disabled={sending[task._id] || !feedback[task._id]?.trim()}
                                                 >
-                                                    {sending[task._id] ? 'Sending…' : '✓ Send Feedback & Mark Complete'}
+                                                    {sending[task._id]
+                                                        ? 'Sending…'
+                                                        : '✓ Send Feedback & Mark Complete'}
                                                 </button>
                                             </div>
                                         )}
