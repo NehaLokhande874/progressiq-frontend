@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
          BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import API from '../api/axios';
@@ -16,6 +17,178 @@ const ROLE_COLOR = {
     member: '#22d3ee',
 };
 
+// ── TeamScoreCard component (outside main component to allow useState in map) ──
+const TeamScoreCard = ({ teamName, team, tasks }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    const teamMembers = team.members.filter(u => u.role === 'member');
+    if (teamMembers.length === 0) return null;
+
+    const teamScoreData = teamMembers.map(u => ({
+        name:  u.username?.split(' ')[0] || u.email,
+        score: u.autoScore  || 0,
+        total: u.totalMarks || 100,
+    }));
+
+    const avgScore = Math.round(
+        teamMembers.reduce((s, u) => s + (u.autoScore || 0), 0) / teamMembers.length
+    );
+    const avgTotal = Math.round(
+        teamMembers.reduce((s, u) => s + (u.totalMarks || 100), 0) / teamMembers.length
+    );
+    const avgPct = avgTotal ? Math.round((avgScore / avgTotal) * 100) : 0;
+
+    return (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+            {/* Team header */}
+            <div className="flex-between" style={{ marginBottom: expanded ? '1.2rem' : 0 }}>
+                <div>
+                    <div style={{
+                        display: 'flex', alignItems: 'center',
+                        gap: '0.75rem', flexWrap: 'wrap'
+                    }}>
+                        <div className="card-title">👥 {teamName}</div>
+                        <span className="badge badge-purple">📁 {team.projectName}</span>
+                        <span className="badge badge-blue">{teamMembers.length} member(s)</span>
+                        <span className="badge badge-green">🔒 Auto Score</span>
+                    </div>
+                    <div style={{
+                        display: 'flex', alignItems: 'center',
+                        gap: '0.75rem', marginTop: '0.6rem'
+                    }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            Team Avg:
+                        </span>
+                        <div style={{ width: 140 }}>
+                            <div className="progress-bar" style={{ height: 6 }}>
+                                <div className="progress-fill" style={{ width: `${avgPct}%` }} />
+                            </div>
+                        </div>
+                        <span style={{
+                            fontSize: '0.85rem', fontWeight: 700,
+                            color: avgPct >= 70 ? '#34d399'
+                                 : avgPct >= 40 ? '#fbbf24' : '#f87171'
+                        }}>
+                            {avgScore}/{avgTotal} · {avgPct}%
+                        </span>
+                    </div>
+                </div>
+                <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setExpanded(prev => !prev)}
+                    style={{ minWidth: 140 }}
+                >
+                    {expanded ? '▲ Hide Details' : '📊 View Details'}
+                </button>
+            </div>
+
+            {/* Expanded section */}
+            {expanded && (
+                <>
+                    <div style={{
+                        background: 'rgba(99,102,241,0.06)', borderRadius: 10,
+                        padding: '0.75rem 1rem', marginBottom: '1.2rem',
+                        fontSize: '0.8rem', color: 'var(--text-muted)',
+                        borderLeft: '3px solid var(--primary)',
+                    }}>
+                        <strong style={{ color: 'var(--primary-light)' }}>
+                            🔒 Score Formula:{' '}
+                        </strong>
+                        Completion (40%) + On-Time (30%) + Difficulty (20%) + Feedback (10%)
+                    </div>
+
+                    {/* Bar chart */}
+                    <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={teamScoreData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                            <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                            <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                            <Tooltip
+                                contentStyle={{
+                                    background: 'var(--surface-2)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 8, fontSize: 12
+                                }}
+                                formatter={(value, name, props) =>
+                                    [`${value}/${props.payload.total}`, 'Score']}
+                            />
+                            <Bar dataKey="score" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+
+                    {/* Members score table */}
+                    <div className="table-wrap" style={{ marginTop: '1.2rem' }}>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Score</th>
+                                    <th>Out of</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teamMembers.map(u => {
+                                    const pct = u.totalMarks
+                                        ? Math.round(((u.autoScore || 0) / u.totalMarks) * 100) : 0;
+                                    return (
+                                        <tr key={u._id}>
+                                            <td>
+                                                <div className="flex-row">
+                                                    <div className="avatar avatar-sm">
+                                                        {(u.username || u.email).slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                                                            {u.username}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                            {u.email}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{
+                                                fontWeight: 700,
+                                                color: 'var(--primary-light)',
+                                                fontSize: '1rem'
+                                            }}>
+                                                {u.autoScore || 0}
+                                            </td>
+                                            <td style={{ color: 'var(--text-muted)' }}>
+                                                {u.totalMarks || 100}
+                                            </td>
+                                            <td>
+                                                <div style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.6rem'
+                                                }}>
+                                                    <div className="progress-bar" style={{ flex: 1, height: 6 }}>
+                                                        <div className="progress-fill"
+                                                            style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: '0.8rem', fontWeight: 600,
+                                                        minWidth: 36,
+                                                        color: pct >= 70 ? '#34d399'
+                                                             : pct >= 40 ? '#fbbf24' : '#f87171'
+                                                    }}>
+                                                        {pct}%
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+// ── Main AdminDashboard component ──
 const AdminDashboard = () => {
     const [users,        setUsers]        = useState([]);
     const [tasks,        setTasks]        = useState([]);
@@ -23,11 +196,20 @@ const AdminDashboard = () => {
     const [error,        setError]        = useState('');
     const [notification, setNotification] = useState('');
     const [activeTab,    setActiveTab]    = useState('overview');
+    const [modal,        setModal]        = useState(null);
     const [teamForm,     setTeamForm]     = useState({
         email: '', teamName: '', projectName: '', totalMarks: 100
     });
-    const [teamMsg, setTeamMsg] = useState('');
-    const socketRef = useRef(null);
+    const [teamMsg,  setTeamMsg]  = useState('');
+    const socketRef  = useRef(null);
+    const location   = useLocation();
+
+    // ✅ Read tab from URL query param (for sidebar links)
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [location.search]);
 
     useEffect(() => {
         socketRef.current = io(BACKEND_URL, { withCredentials: true });
@@ -91,6 +273,7 @@ const AdminDashboard = () => {
         </div>
     );
 
+    // ── Computed values ──
     const totalUsers     = users.length;
     const totalTasks     = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
@@ -114,14 +297,6 @@ const AdminDashboard = () => {
         acc[key].members.push(u);
         return acc;
     }, {});
-
-    const scoreData = users
-        .filter(u => u.role === 'member')
-        .map(u => ({
-            name:  u.username?.split(' ')[0] || u.email,
-            score: u.autoScore  || 0,
-            total: u.totalMarks || 100,
-        }));
 
     const tabStyle = (t) => ({
         padding: '0.5rem 1.2rem', borderRadius: 8, border: 'none',
@@ -165,28 +340,197 @@ const AdminDashboard = () => {
                     ))}
                 </div>
 
-                {/* OVERVIEW */}
+                {/* ✅ MODAL POPUP */}
+                {modal && (
+                    <div onClick={() => setModal(null)} style={{
+                        position: 'fixed', inset: 0,
+                        background: 'rgba(0,0,0,0.65)',
+                        backdropFilter: 'blur(4px)',
+                        zIndex: 100,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <div onClick={e => e.stopPropagation()} style={{
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border-bright)',
+                            borderRadius: 16, padding: '1.5rem',
+                            minWidth: 360, maxWidth: 520,
+                            maxHeight: '80vh', overflowY: 'auto',
+                            boxShadow: 'var(--shadow-lg)',
+                        }}>
+                            <div style={{
+                                display: 'flex', justifyContent: 'space-between',
+                                alignItems: 'center', marginBottom: '1.2rem',
+                                borderBottom: '1px solid var(--border)',
+                                paddingBottom: '0.75rem',
+                            }}>
+                                <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>
+                                    {modal.icon} {modal.title}
+                                </h3>
+                                <button onClick={() => setModal(null)} style={{
+                                    background: 'var(--surface-3)', border: 'none',
+                                    color: 'var(--text-muted)', borderRadius: 6,
+                                    width: 28, height: 28, cursor: 'pointer',
+                                    fontSize: '0.9rem', display: 'grid', placeItems: 'center'
+                                }}>✕</button>
+                            </div>
+
+                            {modal.items.length === 0 ? (
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">{modal.icon}</div>
+                                    <div className="empty-state-title">No data found</div>
+                                </div>
+                            ) : modal.items.map((item, i) => (
+                                <div key={i} style={{
+                                    display: 'flex', justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '0.65rem 0.9rem',
+                                    background: i % 2 === 0 ? 'var(--surface-2)' : 'transparent',
+                                    borderRadius: 8, marginBottom: '0.3rem',
+                                }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                            {item.name}
+                                        </div>
+                                        {item.sub && (
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                                {item.sub}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {item.badge && (
+                                        <span className="badge" style={{
+                                            background: item.badgeBg || 'var(--primary-dim)',
+                                            color: item.badgeColor  || 'var(--primary-light)',
+                                        }}>
+                                            {item.badge}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── OVERVIEW ── */}
                 {activeTab === 'overview' && (
                     <>
+                        {/* ✅ Clickable stat cards */}
                         <div className="stats-grid">
                             {[
-                                { icon: '👥', label: 'Total Users',     value: totalUsers,           color: 'purple' },
-                                { icon: '📋', label: 'Total Tasks',     value: totalTasks,           color: 'blue'   },
-                                { icon: '✅', label: 'Completed',       value: completedTasks,       color: 'green'  },
-                                { icon: '⏳', label: 'Pending',         value: pendingTasks,         color: 'yellow' },
-                                { icon: '📤', label: 'Submitted',       value: submittedTasks,       color: 'cyan'   },
-                                { icon: '📈', label: 'Completion Rate', value: `${completionRate}%`, color: 'green'  },
+                                {
+                                    icon: '👥', label: 'Total Users', value: totalUsers, color: 'purple',
+                                    onClick: () => setModal({
+                                        icon: '👥', title: 'All Users',
+                                        items: users.map(u => ({
+                                            name: u.username || u.email,
+                                            sub:  u.email,
+                                            badge: u.role,
+                                            badgeBg:    `${ROLE_COLOR[u.role] || '#6366f1'}18`,
+                                            badgeColor:  ROLE_COLOR[u.role]   || '#a5b4fc',
+                                        }))
+                                    })
+                                },
+                                {
+                                    icon: '📋', label: 'Total Tasks', value: totalTasks, color: 'blue',
+                                    onClick: () => setModal({
+                                        icon: '📋', title: 'All Tasks',
+                                        items: tasks.map(t => ({
+                                            name: t.title,
+                                            sub:  `Assigned to: ${t.assignedTo || '—'}`,
+                                            badge: t.status || 'Pending',
+                                            badgeBg:   t.status === 'Completed' ? 'rgba(16,185,129,0.12)'
+                                                     : t.status === 'Submitted' ? 'rgba(99,102,241,0.12)'
+                                                     : 'rgba(245,158,11,0.12)',
+                                            badgeColor: t.status === 'Completed' ? '#34d399'
+                                                      : t.status === 'Submitted' ? '#a5b4fc'
+                                                      : '#fbbf24',
+                                        }))
+                                    })
+                                },
+                                {
+                                    icon: '✅', label: 'Completed', value: completedTasks, color: 'green',
+                                    onClick: () => setModal({
+                                        icon: '✅', title: 'Completed Tasks',
+                                        items: tasks.filter(t => t.status === 'Completed').map(t => ({
+                                            name: t.title,
+                                            sub:  `Assigned to: ${t.assignedTo || '—'}`,
+                                            badge: '✅ Completed',
+                                            badgeBg: 'rgba(16,185,129,0.12)', badgeColor: '#34d399',
+                                        }))
+                                    })
+                                },
+                                {
+                                    icon: '⏳', label: 'Pending', value: pendingTasks, color: 'yellow',
+                                    onClick: () => setModal({
+                                        icon: '⏳', title: 'Pending Tasks',
+                                        items: tasks.filter(t => ['Pending','Active'].includes(t.status)).map(t => ({
+                                            name: t.title,
+                                            sub:  `Assigned to: ${t.assignedTo || '—'}`,
+                                            badge: t.status || 'Pending',
+                                            badgeBg: 'rgba(245,158,11,0.12)', badgeColor: '#fbbf24',
+                                        }))
+                                    })
+                                },
+                                {
+                                    icon: '📤', label: 'Submitted', value: submittedTasks, color: 'cyan',
+                                    onClick: () => setModal({
+                                        icon: '📤', title: 'Submitted Tasks',
+                                        items: tasks.filter(t => t.status === 'Submitted').map(t => ({
+                                            name: t.title,
+                                            sub:  `Assigned to: ${t.assignedTo || '—'}`,
+                                            badge: '📤 Submitted',
+                                            badgeBg: 'rgba(99,102,241,0.12)', badgeColor: '#a5b4fc',
+                                        }))
+                                    })
+                                },
+                                {
+                                    icon: '📈', label: 'Completion Rate', value: `${completionRate}%`, color: 'green',
+                                    onClick: () => setModal({
+                                        icon: '📈', title: 'Completion Rate by Member',
+                                        items: users.filter(u => u.role === 'member').map(u => {
+                                            const mt   = tasks.filter(t => t.assignedTo === u.email);
+                                            const done = mt.filter(t => t.status === 'Completed').length;
+                                            const rate = mt.length ? Math.round((done / mt.length) * 100) : 0;
+                                            return {
+                                                name: u.username || u.email,
+                                                sub:  `${done}/${mt.length} tasks completed`,
+                                                badge: `${rate}%`,
+                                                badgeBg:    rate >= 70 ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                                                badgeColor: rate >= 70 ? '#34d399' : '#fbbf24',
+                                            };
+                                        })
+                                    })
+                                },
                             ].map(s => (
-                                <div className="stat-card" key={s.label}>
+                                <div
+                                    className="stat-card" key={s.label}
+                                    onClick={s.onClick}
+                                    style={{ cursor: 'pointer' }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.borderColor = 'var(--primary)';
+                                        e.currentTarget.style.boxShadow   = 'var(--glow)';
+                                        e.currentTarget.style.transform   = 'translateY(-2px)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.borderColor = 'var(--border)';
+                                        e.currentTarget.style.boxShadow   = 'none';
+                                        e.currentTarget.style.transform   = 'translateY(0)';
+                                    }}
+                                >
                                     <div className={`stat-icon ${s.color}`}>{s.icon}</div>
                                     <div>
                                         <div className="stat-value">{s.value}</div>
                                         <div className="stat-label">{s.label}</div>
                                     </div>
+                                    <div style={{
+                                        marginLeft: 'auto', fontSize: '0.62rem',
+                                        color: 'var(--text-faint)', alignSelf: 'flex-end'
+                                    }}>click ↗</div>
                                 </div>
                             ))}
                         </div>
 
+                        {/* Charts */}
                         <div className="grid-2" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
                             <div className="card">
                                 <div className="card-header">
@@ -245,9 +589,10 @@ const AdminDashboard = () => {
                     </>
                 )}
 
-                {/* TEAMS */}
+                {/* ── TEAMS ── */}
                 {activeTab === 'teams' && (
                     <>
+                        {/* Assign form */}
                         <div className="card" style={{ marginBottom: '1.5rem' }}>
                             <div className="card-header">
                                 <div>
@@ -308,152 +653,154 @@ const AdminDashboard = () => {
                             </form>
                         </div>
 
-                        {Object.entries(teams).map(([teamName, team]) => (
-                            <div className="card" key={teamName} style={{ marginBottom: '1.2rem' }}>
-                                <div className="card-header">
-                                    <div>
-                                        <div className="card-title">👥 {teamName}</div>
-                                        <div className="card-subtitle">
-                                            Project:{' '}
-                                            <strong style={{ color: 'var(--primary-light)' }}>
-                                                {team.projectName}
-                                            </strong>
-                                            {' · '}{team.members.length} member(s)
+                        {/* ✅ Team cards — leader/mentor at top, members in table */}
+                        {Object.entries(teams).map(([teamName, team]) => {
+                            const leaders = team.members.filter(u => u.role === 'leader');
+                            const mentors = team.members.filter(u => u.role === 'mentor');
+                            const members = team.members.filter(u => u.role === 'member');
+
+                            return (
+                                <div className="card" key={teamName} style={{ marginBottom: '1.2rem' }}>
+                                    <div className="card-header">
+                                        <div>
+                                            <div className="card-title">👥 {teamName}</div>
+                                            <div className="card-subtitle">
+                                                Project:{' '}
+                                                <strong style={{ color: 'var(--primary-light)' }}>
+                                                    {team.projectName}
+                                                </strong>
+                                                {' · '}{team.members.length} member(s)
+                                            </div>
                                         </div>
+                                        <span className="badge badge-blue">{team.members.length}</span>
                                     </div>
-                                    <span className="badge badge-blue">{team.members.length}</span>
-                                </div>
-                                <div className="table-wrap">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th><th>Email</th>
-                                                <th>Role</th><th>Score</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {team.members.map(u => (
-                                                <tr key={u._id}>
-                                                    <td style={{ fontWeight: 500 }}>{u.username}</td>
-                                                    <td style={{ color: 'var(--text-muted)' }}>{u.email}</td>
-                                                    <td>
-                                                        <span className="badge" style={{
-                                                            background: `${ROLE_COLOR[u.role] || '#6366f1'}18`,
-                                                            color: ROLE_COLOR[u.role] || '#a5b4fc',
-                                                        }}>{u.role}</span>
-                                                    </td>
-                                                    <td>
-                                                        {u.role === 'member' ? (
-                                                            <span style={{ fontWeight: 700, color: 'var(--primary-light)' }}>
-                                                                {u.autoScore || 0}/{u.totalMarks || 100}
-                                                            </span>
-                                                        ) : '—'}
-                                                    </td>
-                                                </tr>
+
+                                    {/* ✅ Leader & Mentor info cards */}
+                                    {(leaders.length > 0 || mentors.length > 0) && (
+                                        <div className="flex-row" style={{
+                                            marginBottom: '1rem', flexWrap: 'wrap', gap: '0.6rem'
+                                        }}>
+                                            {[...leaders, ...mentors].map(u => (
+                                                <div key={u._id} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                    background: u.role === 'leader'
+                                                        ? 'rgba(99,102,241,0.08)' : 'rgba(16,185,129,0.08)',
+                                                    border: `1px solid ${u.role === 'leader'
+                                                        ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                                                    borderRadius: 8, padding: '0.4rem 0.8rem',
+                                                }}>
+                                                    <div className="avatar avatar-sm">
+                                                        {(u.username || u.email).slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                                            {u.username}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                                                            {u.email}
+                                                        </div>
+                                                    </div>
+                                                    <span className="badge" style={{
+                                                        background: `${ROLE_COLOR[u.role]}18`,
+                                                        color: ROLE_COLOR[u.role],
+                                                    }}>{u.role}</span>
+                                                </div>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </div>
+                                    )}
+
+                                    {/* ✅ Members only table with score */}
+                                    {members.length > 0 ? (
+                                        <div className="table-wrap">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Member</th>
+                                                        <th>Email</th>
+                                                        <th>Score</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {members.map(u => {
+                                                        const pct = u.totalMarks
+                                                            ? Math.round(((u.autoScore || 0) / u.totalMarks) * 100) : 0;
+                                                        return (
+                                                            <tr key={u._id}>
+                                                                <td>
+                                                                    <div className="flex-row">
+                                                                        <div className="avatar avatar-sm">
+                                                                            {(u.username || u.email).slice(0, 2).toUpperCase()}
+                                                                        </div>
+                                                                        <span style={{ fontWeight: 500 }}>
+                                                                            {u.username}
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                                <td style={{ color: 'var(--text-muted)' }}>{u.email}</td>
+                                                                <td>
+                                                                    <div style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '0.6rem'
+                                                                    }}>
+                                                                        <div className="progress-bar" style={{ width: 80, height: 5 }}>
+                                                                            <div className="progress-fill" style={{ width: `${pct}%` }} />
+                                                                        </div>
+                                                                        <span style={{
+                                                                            fontWeight: 700,
+                                                                            color: 'var(--primary-light)',
+                                                                            fontSize: '0.85rem'
+                                                                        }}>
+                                                                            {u.autoScore || 0}/{u.totalMarks || 100}
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            fontSize: '0.8rem', color: 'var(--text-muted)',
+                                            padding: '0.5rem 0', textAlign: 'center'
+                                        }}>
+                                            No members assigned yet
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </>
                 )}
 
-                {/* SCORES */}
+                {/* ── SCORES ── */}
                 {activeTab === 'scores' && (
                     <>
-                        <div className="card" style={{ marginBottom: '1.5rem' }}>
-                            <div className="card-header">
-                                <div>
-                                    <div className="card-title">🏆 Auto-Evaluation Scores</div>
-                                    <div className="card-subtitle">
-                                        Calculated automatically — no manual editing possible
+                        {Object.entries(teams).map(([teamName, team]) => (
+                            <TeamScoreCard
+                                key={teamName}
+                                teamName={teamName}
+                                team={team}
+                                tasks={tasks}
+                            />
+                        ))}
+                        {Object.values(teams).every(
+                            t => t.members.filter(u => u.role === 'member').length === 0
+                        ) && (
+                            <div className="card">
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">🏆</div>
+                                    <div className="empty-state-title">No member scores yet</div>
+                                    <div className="empty-state-body">
+                                        Assign members to teams to see scores here
                                     </div>
                                 </div>
-                                <span className="badge badge-green">🔒 Auto-locked</span>
                             </div>
-                            <div style={{
-                                background: 'rgba(99,102,241,0.08)', borderRadius: 10,
-                                padding: '1rem', marginBottom: '1.2rem',
-                                fontSize: '0.82rem', color: 'var(--text-muted)',
-                                borderLeft: '3px solid var(--primary)',
-                            }}>
-                                <strong style={{ color: 'var(--primary-light)' }}>Score Formula: </strong>
-                                Completion Rate (40%) + On-Time Delivery (30%) +
-                                Task Weightage (20%) + Mentor Feedback (10%)
-                            </div>
-                            <ResponsiveContainer width="100%" height={280}>
-                                <BarChart data={scoreData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                    <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                                    <Tooltip
-                                        contentStyle={{
-                                            background: 'var(--surface-2)',
-                                            border: '1px solid var(--border)',
-                                            borderRadius: 8, fontSize: 12
-                                        }}
-                                        formatter={(value, name, props) =>
-                                            [`${value}/${props.payload.total}`, 'Score']}
-                                    />
-                                    <Bar dataKey="score" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-
-                        <div className="card">
-                            <div className="card-header">
-                                <div className="card-title">Member Score Details</div>
-                            </div>
-                            <div className="table-wrap">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Member</th><th>Team</th><th>Project</th>
-                                            <th>Score</th><th>Out of</th><th>Percentage</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {users.filter(u => u.role === 'member').length === 0 ? (
-                                            <tr><td colSpan={6}>
-                                                <div className="empty-state">
-                                                    <div className="empty-state-icon">🏆</div>
-                                                    <div className="empty-state-title">No member scores yet</div>
-                                                </div>
-                                            </td></tr>
-                                        ) : users.filter(u => u.role === 'member').map(u => {
-                                            const pct = u.totalMarks
-                                                ? Math.round(((u.autoScore || 0) / u.totalMarks) * 100) : 0;
-                                            return (
-                                                <tr key={u._id}>
-                                                    <td style={{ fontWeight: 500 }}>{u.username}</td>
-                                                    <td style={{ color: 'var(--text-muted)' }}>{u.teamName    || '—'}</td>
-                                                    <td style={{ color: 'var(--text-muted)' }}>{u.projectName || '—'}</td>
-                                                    <td style={{ fontWeight: 700, color: 'var(--primary-light)' }}>
-                                                        {u.autoScore || 0}
-                                                    </td>
-                                                    <td>{u.totalMarks || 100}</td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                            <div className="progress-bar" style={{ flex: 1, height: 6 }}>
-                                                                <div className="progress-fill" style={{ width: `${pct}%` }} />
-                                                            </div>
-                                                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                                                                {pct}%
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        )}
                     </>
                 )}
 
-                {/* USERS */}
+                {/* ── USERS ── */}
                 {activeTab === 'users' && (
                     <div className="card">
                         <div className="card-header">
@@ -461,6 +808,7 @@ const AdminDashboard = () => {
                                 <div className="card-title">All Users</div>
                                 <div className="card-subtitle">Manage all organization members</div>
                             </div>
+                            <span className="badge badge-blue">{totalUsers} total</span>
                         </div>
                         <div className="table-wrap">
                             <table>
