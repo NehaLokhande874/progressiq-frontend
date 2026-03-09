@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
+import { useTheme } from '../components/ThemeContext';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -13,6 +14,8 @@ const Signup = () => {
     const [loading, setLoading] = useState(false);
     const [error,   setError]   = useState('');
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
+    const isDark = theme === 'dark';
 
     const handleChange = (e) =>
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -54,13 +57,44 @@ const Signup = () => {
         <div style={{
             minHeight: '100vh', display: 'flex', alignItems: 'center',
             justifyContent: 'center', background: 'var(--bg)', padding: '1rem',
+            transition: 'background 0.3s ease',
         }}>
+
+            {/* ✅ Theme toggle — fixed top right */}
+            <button
+                onClick={toggleTheme}
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                style={{
+                    position: 'fixed', top: '1rem', right: '1rem',
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 20, padding: '0.4rem 0.9rem',
+                    cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600,
+                    color: 'var(--text-muted)', zIndex: 10, transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.color = 'var(--primary-light)';
+                }}
+                onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                }}
+            >
+                <span>{isDark ? '☀️' : '🌙'}</span>
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+            </button>
+
+            {/* Background glow */}
             <div style={{
                 position: 'fixed', inset: 0, pointerEvents: 'none',
                 background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%)',
             }} />
 
             <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
+
+                {/* Logo */}
                 <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                     <div style={{
                         width: 52, height: 52, background: 'var(--primary)',
@@ -134,7 +168,7 @@ const Signup = () => {
                             </select>
                         </div>
 
-                        {/* ✅ Secret key field — appears only for admin/leader/mentor */}
+                        {/* Secret key field */}
                         {needsKey && (
                             <div className="form-group" style={{
                                 background: 'rgba(99,102,241,0.06)',

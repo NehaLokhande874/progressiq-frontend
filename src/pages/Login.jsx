@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
+import { useTheme } from '../components/ThemeContext';
 
 const Login = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [loading,  setLoading]  = useState(false);
     const [error,    setError]    = useState('');
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
+    const isDark = theme === 'dark';
 
     const handleChange = (e) =>
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -44,13 +47,44 @@ const Login = () => {
         <div style={{
             minHeight: '100vh', display: 'flex', alignItems: 'center',
             justifyContent: 'center', background: 'var(--bg)', padding: '1rem',
+            transition: 'background 0.3s ease',
         }}>
+
+            {/* ✅ Theme toggle — fixed top right */}
+            <button
+                onClick={toggleTheme}
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                style={{
+                    position: 'fixed', top: '1rem', right: '1rem',
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 20, padding: '0.4rem 0.9rem',
+                    cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600,
+                    color: 'var(--text-muted)', zIndex: 10, transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.color = 'var(--primary-light)';
+                }}
+                onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                }}
+            >
+                <span>{isDark ? '☀️' : '🌙'}</span>
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+            </button>
+
+            {/* Background glow */}
             <div style={{
                 position: 'fixed', inset: 0, pointerEvents: 'none',
                 background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%)',
             }} />
 
             <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
+
+                {/* Logo */}
                 <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                     <div style={{
                         width: 52, height: 52, background: 'var(--primary)',
@@ -66,6 +100,7 @@ const Login = () => {
                     </p>
                 </div>
 
+                {/* Card */}
                 <div className="card" style={{ padding: '2rem' }}>
                     <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.5rem' }}>
                         Welcome back
