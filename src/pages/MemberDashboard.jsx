@@ -81,7 +81,7 @@ const MemberDashboard = () => {
 
     const fetchTasks = async () => {
         try {
-            const { data } = await API.get('/tasks/member/tasks');
+            const { data } = await API.get(`/tasks/member/tasks?email=${email}`);
             setTasks(data);
         } catch { setError('Failed to load tasks.'); }
         finally  { setLoading(false); }
@@ -173,7 +173,6 @@ const MemberDashboard = () => {
                 {/* Score + Donut chart */}
                 <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
 
-                    {/* Auto-score card */}
                     <div className="card">
                         <div className="card-header">
                             <div>
@@ -212,7 +211,6 @@ const MemberDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Donut chart */}
                     <div className="card">
                         <div className="card-header">
                             <div className="card-title">Task Distribution</div>

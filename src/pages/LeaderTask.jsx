@@ -36,17 +36,15 @@ const LeaderTask = () => {
     useEffect(() => {
         socketRef.current = io(BACKEND_URL, { withCredentials: true });
         if (email) socketRef.current.emit('join', email);
-
-        socketRef.current.on('work-submitted', () => { fetchData(); });
-
+        socketRef.current.on('work-submitted', () => fetchData());
         return () => socketRef.current?.disconnect();
     }, []);
 
     const fetchData = async () => {
         try {
             const [tRes, mRes] = await Promise.all([
-                API.get('/tasks/leader/my-tasks'),
-                API.get('/tasks/leader/members'),
+                API.get(`/tasks/leader/my-tasks?email=${email}`),
+                API.get(`/tasks/leader/members?email=${email}`),
             ]);
             setMyTasks(tRes.data);
             setMembers(mRes.data);
@@ -85,7 +83,7 @@ const LeaderTask = () => {
             await API.post('/tasks/leader/tasks', { tasks: tasksToSend });
             setSuccess(`✅ ${valid.length} task(s) assigned successfully!`);
             setTasksList([{ ...emptyTask }]);
-            const { data } = await API.get('/tasks/leader/my-tasks');
+            const { data } = await API.get(`/tasks/leader/my-tasks?email=${email}`);
             setMyTasks(data);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to assign tasks.');
@@ -122,24 +120,17 @@ const LeaderTask = () => {
                 {error   && <div className="alert alert-error"><span>⚠</span> {error}</div>}
                 {success && <div className="alert alert-success"><span>✓</span> {success}</div>}
 
-                {/* Assign tasks form */}
                 <div className="card" style={{ marginBottom: '1.5rem' }}>
                     <div className="card-header">
                         <div>
                             <div className="card-title">Assign New Tasks</div>
-                            <div className="card-subtitle">
-                                Set title, assignee, deadline and difficulty weightage
-                            </div>
+                            <div className="card-subtitle">Set title, assignee, deadline and difficulty weightage</div>
                         </div>
-                        <button className="btn btn-secondary btn-sm" onClick={addRow}>
-                            + Add Row
-                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={addRow}>+ Add Row</button>
                     </div>
 
                     <form onSubmit={handleSubmit}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.2rem' }}>
-
-                            {/* Column headers */}
                             <div style={{
                                 display: 'grid',
                                 gridTemplateColumns: '2fr 1.5fr 1fr 1fr auto',
@@ -152,7 +143,6 @@ const LeaderTask = () => {
                                 <span />
                             </div>
 
-                            {/* Task rows */}
                             {tasksList.map((task, i) => (
                                 <div key={i} style={{
                                     display: 'grid',
@@ -185,7 +175,6 @@ const LeaderTask = () => {
                                         onChange={e => handleRowChange(i, 'deadline', e.target.value)}
                                         style={{ colorScheme: 'dark' }}
                                     />
-                                    {/* Weightage slider */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <input
                                             type="range" min="1" max="10" step="1"
@@ -195,8 +184,7 @@ const LeaderTask = () => {
                                         />
                                         <span style={{
                                             minWidth: 28, textAlign: 'center',
-                                            fontWeight: 700, color: 'var(--primary-light)',
-                                            fontSize: '0.9rem'
+                                            fontWeight: 700, color: 'var(--primary-light)', fontSize: '0.9rem'
                                         }}>{task.weightage}</span>
                                     </div>
                                     <button
@@ -225,7 +213,6 @@ const LeaderTask = () => {
                     </form>
                 </div>
 
-                {/* Existing tasks table */}
                 <div className="card">
                     <div className="card-header">
                         <div className="card-title">All Assigned Tasks</div>

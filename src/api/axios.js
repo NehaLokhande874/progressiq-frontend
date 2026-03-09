@@ -9,19 +9,11 @@ const API = axios.create({
     withCredentials: true,
 });
 
-// ── Request: attach JWT + email header ──
+// ── Request: only attach JWT token (NO x-user-email header) ──
 API.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        const email = localStorage.getItem('email');
-
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-            // ✅ Only send x-user-email when logged in
-            // Prevents CORS error on signup/login routes
-            if (email) config.headers['x-user-email'] = email;
-        }
-
+        if (token) config.headers.Authorization = `Bearer ${token}`;
         return config;
     },
     (error) => Promise.reject(error)

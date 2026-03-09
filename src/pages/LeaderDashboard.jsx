@@ -47,9 +47,9 @@ const LeaderDashboard = () => {
     const fetchAll = async () => {
         try {
             const [sRes, tRes, mRes] = await Promise.all([
-                API.get('/tasks/leader/stats'),
-                API.get('/tasks/leader/team-tasks'),
-                API.get('/tasks/leader/members'),
+                API.get(`/tasks/leader/stats?email=${email}`),
+                API.get(`/tasks/leader/team-tasks?email=${email}`),
+                API.get(`/tasks/leader/members?email=${email}`),
             ]);
             setStats(sRes.data);
             setTeamTasks(tRes.data);
@@ -166,7 +166,7 @@ const LeaderDashboard = () => {
                     </div>
                 </div>
 
-                {/* Member list with scores */}
+                {/* Member list */}
                 <div className="card" style={{ marginBottom: '1.5rem' }}>
                     <div className="card-header">
                         <div className="card-title">Team Members</div>

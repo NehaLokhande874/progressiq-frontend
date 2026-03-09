@@ -239,7 +239,7 @@ const AdminDashboard = () => {
                             <div className="card-header">
                                 <div>
                                     <div className="card-title">Assign Team & Project</div>
-                                    <div className="card-subtitle">Set team name, project name and total marks for any user</div>
+                                    <div className="card-subtitle">Set team name, project and total marks</div>
                                 </div>
                             </div>
                             {teamMsg && (
