@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import API from '../api/axios';
 import Sidebar from '../components/Sidebar';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
-
 const STATUS_COLORS = {
-    completed: { bg: 'rgba(16,185,129,0.12)', color: '#34d399', hex: '#10b981' },
-    pending:   { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
-    submitted: { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc', hex: '#6366f1' },
-    revision:  { bg: 'rgba(239,68,68,0.12)',  color: '#f87171', hex: '#ef4444' },
+    Completed:   { bg: 'rgba(16,185,129,0.12)', color: '#34d399', hex: '#10b981' },
+    Pending:     { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
+    Active:      { bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', hex: '#f59e0b' },
+    Submitted:   { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc', hex: '#6366f1' },
+    Revision:    { bg: 'rgba(239,68,68,0.12)',  color: '#f87171', hex: '#ef4444' },
 };
 
 const MemberDetailView = () => {
@@ -25,8 +23,9 @@ const MemberDetailView = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // ✅ Fixed API path
                 const { data } = await API.get(
-                    `/users/member-details/${encodeURIComponent(email)}`
+                    `/auth/users/member-details/${encodeURIComponent(email)}`
                 );
                 setMember(data.member);
                 setTasks(data.tasks || []);
@@ -44,40 +43,24 @@ const MemberDetailView = () => {
     );
 
     // ── Computed stats ──
-    const statusCounts = tasks.reduce((acc, t) => {
-        acc[t.status || 'pending'] = (acc[t.status || 'pending'] || 0) + 1;
-        return acc;
-    }, {});
-
-    const completed = statusCounts.completed || 0;
-    const pending   = statusCounts.pending   || 0;
-    const submitted = statusCounts.submitted || 0;
-    const revision  = statusCounts.revision  || 0;
+    const completed = tasks.filter(t => t.status === 'Completed').length;
+    const pending   = tasks.filter(t => ['Pending','Active'].includes(t.status)).length;
+    const submitted = tasks.filter(t => t.status === 'Submitted').length;
+    const revision  = tasks.filter(t => t.status === 'Revision').length;
     const total     = tasks.length;
     const rate      = total ? Math.round((completed / total) * 100) : 0;
 
-    const chartData = {
-        labels: ['Completed', 'Pending', 'Submitted', 'Revision'],
-        datasets: [{
-            data: [completed, pending, submitted, revision],
-            backgroundColor: ['#10b981', '#f59e0b', '#6366f1', '#ef4444'],
-            borderWidth: 0,
-        }],
-    };
+    // ✅ Auto score
+    const autoScore  = member?.autoScore  || 0;
+    const totalMarks = member?.totalMarks || 100;
+    const scorePct   = totalMarks ? Math.round((autoScore / totalMarks) * 100) : 0;
 
-    const chartOptions = {
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    color: '#64748b',
-                    font: { family: 'Plus Jakarta Sans', size: 12 },
-                    padding: 16,
-                },
-            },
-        },
-        cutout: '60%',
-    };
+    const pieData = [
+        { name: 'Completed', value: completed, color: '#10b981' },
+        { name: 'Pending',   value: pending,   color: '#f59e0b' },
+        { name: 'Submitted', value: submitted,  color: '#6366f1' },
+        { name: 'Revision',  value: revision,   color: '#ef4444' },
+    ].filter(d => d.value > 0);
 
     return (
         <div className="page-shell">
@@ -86,12 +69,14 @@ const MemberDetailView = () => {
 
                 {/* Back button */}
                 <div className="page-header">
-                    <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => navigate(-1)}
-                    >
-                        ← Back
-                    </button>
+                    <div>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => navigate(-1)}
+                        >
+                            ← Back
+                        </button>
+                    </div>
                 </div>
 
                 {error && (
@@ -102,20 +87,53 @@ const MemberDetailView = () => {
                 <div className="card" style={{ marginBottom: '1.5rem' }}>
                     <div className="flex-row">
                         <div className="avatar avatar-lg">
-                            {(member?.name || email).slice(0, 2).toUpperCase()}
+                            {(member?.username || email).slice(0, 2).toUpperCase()}
                         </div>
-                        <div>
+                        <div style={{ flex: 1 }}>
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-                                {member?.name || '—'}
+                                {member?.username || '—'}
                             </h2>
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                                 {email}
                             </p>
-                            <div className="flex-row" style={{ marginTop: '0.5rem' }}>
+                            <div className="flex-row" style={{ marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <span className="badge badge-cyan">member</span>
+                                {member?.teamName && (
+                                    <span className="badge badge-blue">👥 {member.teamName}</span>
+                                )}
+                                {member?.projectName && (
+                                    <span className="badge badge-purple">📁 {member.projectName}</span>
+                                )}
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                     {total} task(s) · {rate}% completion
                                 </span>
+                            </div>
+                        </div>
+
+                        {/* ✅ Auto score badge */}
+                        <div style={{
+                            textAlign: 'center',
+                            background: 'rgba(99,102,241,0.08)',
+                            borderRadius: 12, padding: '1rem 1.5rem',
+                            border: '1px solid rgba(99,102,241,0.2)',
+                        }}>
+                            <div style={{
+                                fontSize: '2rem', fontWeight: 800,
+                                color: 'var(--primary-light)',
+                                letterSpacing: '-0.04em',
+                            }}>
+                                {autoScore}
+                                <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                                    /{totalMarks}
+                                </span>
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                🏆 Auto Score
+                            </div>
+                            <div style={{ width: 80, margin: '0.4rem auto 0' }}>
+                                <div className="progress-bar" style={{ height: 4 }}>
+                                    <div className="progress-fill" style={{ width: `${scorePct}%` }} />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -123,7 +141,7 @@ const MemberDetailView = () => {
 
                 <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
 
-                    {/* Stats + completion bar */}
+                    {/* Stats */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div className="stats-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                             {[
@@ -155,30 +173,66 @@ const MemberDetailView = () => {
                                 </div>
                                 <span style={{
                                     fontFamily: 'JetBrains Mono, monospace',
-                                    fontWeight: 700,
-                                    fontSize: '1.1rem',
+                                    fontWeight: 700, fontSize: '1.1rem',
                                     color: 'var(--primary-light)',
-                                    minWidth: '3rem',
-                                    textAlign: 'right',
+                                    minWidth: '3rem', textAlign: 'right',
                                 }}>
                                     {rate}%
                                 </span>
                             </div>
                         </div>
+
+                        {/* Score formula */}
+                        <div style={{
+                            background: 'rgba(99,102,241,0.06)',
+                            borderRadius: 10, padding: '0.85rem',
+                            fontSize: '0.78rem', color: 'var(--text-muted)',
+                            borderLeft: '3px solid var(--primary)',
+                        }}>
+                            <strong style={{ color: 'var(--primary-light)' }}>
+                                Score Formula:
+                            </strong>
+                            <br />
+                            Completion (40%) + On-Time (30%) +
+                            Difficulty (20%) + Feedback (10%)
+                        </div>
                     </div>
 
-                    {/* Pie chart */}
+                    {/* ✅ Pie chart using recharts */}
                     <div className="card">
                         <div className="card-title" style={{ marginBottom: '1rem' }}>
                             Task Distribution
                         </div>
-                        {total > 0 ? (
-                            <Pie data={chartData} options={chartOptions} />
-                        ) : (
+                        {pieData.length === 0 ? (
                             <div className="empty-state">
                                 <div className="empty-state-icon">📊</div>
                                 <div className="empty-state-title">No task data yet</div>
                             </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={220}>
+                                <PieChart>
+                                    <Pie
+                                        data={pieData} cx="50%" cy="50%"
+                                        innerRadius={55} outerRadius={85}
+                                        paddingAngle={3} dataKey="value"
+                                    >
+                                        {pieData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.color} stroke="transparent" />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{
+                                        background: 'var(--surface-2)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 8, fontSize: 12
+                                    }} />
+                                    <Legend iconType="circle" iconSize={8}
+                                        formatter={v => (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                                                {v}
+                                            </span>
+                                        )} />
+                                </PieChart>
+                            </ResponsiveContainer>
                         )}
                     </div>
                 </div>
@@ -194,40 +248,68 @@ const MemberDetailView = () => {
                             <thead>
                                 <tr>
                                     <th>Task</th>
+                                    <th>Weightage</th>
                                     <th>Deadline</th>
+                                    <th>On Time</th>
                                     <th>Status</th>
+                                    <th>Feedback Score</th>
                                     <th>Progress Note</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {tasks.length === 0 ? (
-                                    <tr><td colSpan={4}>
+                                    <tr><td colSpan={7}>
                                         <div className="empty-state">
                                             <div className="empty-state-icon">📋</div>
                                             <div className="empty-state-title">No tasks yet</div>
                                         </div>
                                     </td></tr>
                                 ) : tasks.map(t => {
-                                    const sc = STATUS_COLORS[t.status] || STATUS_COLORS.pending;
+                                    const sc = STATUS_COLORS[t.status] || STATUS_COLORS.Pending;
                                     return (
                                         <tr key={t._id}>
                                             <td style={{ fontWeight: 500 }}>{t.title}</td>
+                                            <td>
+                                                <span style={{
+                                                    background: 'rgba(99,102,241,0.12)',
+                                                    color: '#a5b4fc',
+                                                    padding: '2px 8px', borderRadius: 6,
+                                                    fontSize: '0.78rem', fontWeight: 700
+                                                }}>
+                                                    {t.weightage || 5}/10
+                                                </span>
+                                            </td>
                                             <td style={{
                                                 fontFamily: 'JetBrains Mono, monospace',
-                                                fontSize: '0.8rem',
-                                                color: 'var(--text-muted)'
+                                                fontSize: '0.8rem', color: 'var(--text-muted)'
                                             }}>
                                                 {t.deadline
                                                     ? new Date(t.deadline).toLocaleDateString()
                                                     : '—'}
                                             </td>
                                             <td>
+                                                {t.status === 'Completed' || t.status === 'Submitted'
+                                                    ? t.onTime
+                                                        ? <span style={{ color: '#10b981' }}>✅ Yes</span>
+                                                        : <span style={{ color: '#ef4444' }}>⚠ Late</span>
+                                                    : <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                                }
+                                            </td>
+                                            <td>
                                                 <span className="badge" style={{
-                                                    background: sc.bg,
-                                                    color: sc.color
+                                                    background: sc.bg, color: sc.color
                                                 }}>
-                                                    {t.status || 'pending'}
+                                                    {t.status || 'Pending'}
                                                 </span>
+                                            </td>
+                                            <td>
+                                                {t.feedbackScore > 0 ? (
+                                                    <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                                                        ⭐ {t.feedbackScore}/10
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                                )}
                                             </td>
                                             <td style={{
                                                 fontSize: '0.82rem',
